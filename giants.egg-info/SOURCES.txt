@@ -1,0 +1,5 @@
+setup.py
+giants.egg-info/PKG-INFO
+giants.egg-info/SOURCES.txt
+giants.egg-info/dependency_links.txt
+giants.egg-info/top_level.txt
