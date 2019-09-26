@@ -27,6 +27,9 @@ class Giant(object):
             path = os.path.abspath(os.path.join(PACKAGEDIR, 'data', 'TICgiants_CVZ.csv'))
         return pd.read_csv(path, skiprows=4)
 
+    def get_target_list(self):
+        return self.cvz[self.brightcvz].ID.values
+
     def from_lightkurve(self, ind=0, ticid=None, pld=True):
         '''
         Returns
@@ -78,10 +81,10 @@ class Giant(object):
         q = data.quality == 0
 
         # create raw flux light curve
-        raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], label='raw').normalize()
-        corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], label='corr').normalize()
-        pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], label='pca').normalize()
-        psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], label='psf').normalize()
+        raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], label='raw').remove_nans().normalize()
+        corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], label='corr').remove_nans().normalize()
+        pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], label='pca').remove_nans().normalize()
+        psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], label='psf').remove_nans().normalize()
 
         self.breakpoints = [raw_lc.time[-1]]
 
@@ -91,10 +94,10 @@ class Giant(object):
                 data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
                 q = data.quality == 0
 
-                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q]).normalize())
-                corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q]).normalize())
-                pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q]).normalize())
-                psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q]).normalize())
+                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q]).remove_nans().normalize())
+                corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q]).remove_nans().normalize())
+                pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q]).remove_nans().normalize())
+                psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q]).remove_nans().normalize())
 
                 self.breakpoints.append(raw_lc.time[-1])
 
@@ -171,12 +174,10 @@ class Giant(object):
         plt.ylabel('Normalized Flux')
         plt.xlabel('Time')
 
-        if use == 'lightkurve':
-            power = lc.to_periodogram().power
-            freq = np.linspace(1./15, 1./.01, len(power))
-        else:
-            freq = np.linspace(1./15, 1./.01, 100000)
-            power = ass.LombScargle(time, flux, flux_err).power(freq)
+        power = lc.to_periodogram().power
+        freq = np.linspace(1./15, 1./.01, len(power))
+        # freq = np.linspace(1./15, 1./.01, 100000)
+        # power = ass.LombScargle(time, flux, flux_err).power(freq)
         ps = 1./freq
 
         '''
