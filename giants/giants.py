@@ -1,4 +1,6 @@
 import os
+import re
+import eleanor
 import numpy as np
 import pandas as pd
 import scipy
@@ -25,14 +27,15 @@ class Giant(object):
             path = os.path.abspath(os.path.join(PACKAGEDIR, 'data', 'TICgiants_CVZ.csv'))
         return pd.read_csv(path, skiprows=4)
 
-    def get_lightcurve(self, ind=0, pld=True):
+    def from_lightkurve(self, ind=0, ticid=None, pld=True):
         '''
         Returns
         -------
         LightCurveCollection
         '''
-        i = ind
-        ticid = self.cvz[self.brightcvz].ID.values[i]
+        if ticid == None:
+            i = ind
+            ticid = self.cvz[self.brightcvz].ID.values[i]
         print(ticid)
         tpfc = self.get_data(ticid=ticid)
         rlc = self.photometry(tpfc[0], pld=False).normalize()
@@ -62,6 +65,41 @@ class Giant(object):
         tpfc = sr.download_all(cutout_size=5)
         return tpfc
 
+    def from_eleanor(self, ticid):
+        sr = lk.search_tesscut(ticid)
+        sectors = []
+        for desc in sr.table['description']:
+            sectors.append(int(re.search(r'\d+', str(desc)).group()))
+
+        print(f'Creating light curve for target {ticid} for sectors {sectors}.')
+
+        star = eleanor.Source(tic=ticid, sector=sectors[0], tc=True)
+        data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
+        q = data.quality == 0
+
+        # create raw flux light curve
+        raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], label='raw').normalize()
+        corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], label='corr').normalize()
+        pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], label='pca').normalize()
+        psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], label='psf').normalize()
+
+        self.breakpoints = [raw_lc.time[-1]]
+
+        if len(sectors) > 1:
+            for s in sectors[1:]:
+                star = eleanor.Source(tic=ticid, sector=s, tc=True)
+                data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
+                q = data.quality == 0
+
+                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q]).normalize())
+                corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q]).normalize())
+                pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q]).normalize())
+                psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q]).normalize())
+
+                self.breakpoints.append(raw_lc.time[-1])
+
+        return lk.LightCurveCollection([raw_lc, corr_lc, pca_lc, psf_lc])
+
     def photometry(self, tpf, pld=True):
         if pld:
             pld = tpf.to_corrector('pld')
@@ -70,26 +108,9 @@ class Giant(object):
             lc = tpf.to_lightcurve(aperture_mask='threshold')
         return lc
 
-    def plot(self, lcc=None, use='raw'):
+    def plot(self, ticid, use='eleanor'):
 
-        if lcc is None:
-            lcc = self.get_lightcurve()
         plt.clf()
-
-        if use=='raw':
-            lc = lcc[0]
-        else:
-            lc = lcc[1]
-
-        time = lc.time[q]
-        flux = lc.flux[q] - 1
-        flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
-        flux_err = lc.flux_err[q]
-
-        # track momentum dumps and exclude from periodogram
-        momdump = (time > 1339) * (time < 1341)
-        time = time[~momdump]
-        flux = flux[~momdump]
 
         '''
         Plot Light Curve
@@ -97,27 +118,45 @@ class Giant(object):
         '''
         plt.subplot2grid((4,4),(0,0),colspan=2)
 
-        q = lcc[0].quality == 0
+        if use == 'lightkurve':
+            lcc = self.from_lightkurve(ticid)
+            q = lcc[0].quality == 0
 
-        plt.plot(lcc[0].time[q], lcc[0].flux[q], 'k', label="Raw")
-        if len(lcc) > 1:
-            plt.plot(lcc[1].time[q], lcc[1].flux[q], 'r', label="Corr")
-        for val in self.breakpoints:
-            plt.axvline(val, c='b', linestyle='dashed')
+            plt.plot(lcc[0].time[q], lcc[0].flux[q], 'k', label="Raw")
+            if len(lcc) > 1:
+                plt.plot(lcc[1].time[q], lcc[1].flux[q], 'r', label="Corr")
+            for val in self.breakpoints:
+                plt.axvline(val, c='b', linestyle='dashed')
+            lc = lcc[-1]
+            time = lc.time[q]
+            flux = lc.flux[q] - 1
+            flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux_err = lc.flux_err[q]
+
+        else:
+            lcc = self.from_eleanor(ticid)
+            for lc,label in zip(lcc, ['raw', 'corr', 'pca', 'psf']):
+                plt.plot(lc.time, lc.flux, label=label)
+            for val in self.breakpoints:
+                plt.axvline(val, c='b', linestyle='dashed')
+            plt.legend(loc=0)
+
+            lc = lcc[1] # using corr_lc
+            time = lc.time
+            flux = lc.flux - 1
+            flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux_err = np.ones_like(flux) * 1e-5
+
+
+        #mask first 12h after momentum dump
+        momdump = (time > 1339) * (time < 1341)
+        time = time[~momdump]
+        flux = flux[~momdump]
 
         plt.legend()
         plt.ylabel('Normalized Flux')
         plt.xlabel('Time')
 
-        if use=='raw':
-            lc = lcc[0]
-        else:
-            lc = lcc[1]
-
-        time = lc.time[q]
-        flux = lc.flux[q] - 1
-        flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
-        flux_err = lc.flux_err[q]
 
         '''
         Plot Filtered Light Curve
@@ -132,10 +171,12 @@ class Giant(object):
         plt.ylabel('Normalized Flux')
         plt.xlabel('Time')
 
-        power = lc.to_periodogram().power
-        # freq = np.linspace(1./15, 1./.01, 100000)
-        # power = ass.LombScargle(time, flux, flux_err).power(freq)
-        freq = np.linspace(1./15, 1./.01, len(power))
+        if use == 'lightkurve':
+            power = lc.to_periodogram().power
+            freq = np.linspace(1./15, 1./.01, len(power))
+        else:
+            freq = np.linspace(1./15, 1./.01, 100000)
+            power = ass.LombScargle(time, flux, flux_err).power(freq)
         ps = 1./freq
 
         '''
