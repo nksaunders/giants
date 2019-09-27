@@ -247,7 +247,7 @@ class Giant(object):
         '''
         plt.subplot2grid((4,4),(0,2),colspan=2,rowspan=4)
         plt.loglog(freq/24/3600 * 1e6, power)
-        plt.loglog(freq/24/3600 * 1e6, scipy.ndimage.filters.gaussian_filter(power, 500), color='r', alpha=0.8, lw=2.5)
+        plt.loglog(freq/24/3600 * 1e6, scipy.ndimage.filters.gaussian_filter(power, 50), color='r', alpha=0.8, lw=2.5)
         plt.axvline(283,-1,1, ls='--', color='k')
         plt.xlabel("Frequency [uHz]")
         plt.ylabel("Power")
@@ -287,5 +287,5 @@ class Giant(object):
         fig = plt.gcf()
         fig.set_size_inches(12, 10)
 
-        fig.savefig(str(ticid)+'_quicklook.png')
+        fig.savefig('plots/'+str(ticid)+'_quicklook.png')
         plt.show()

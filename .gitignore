@@ -2,6 +2,7 @@
 __pycache__/
 giants/__pycache__/
 giants/__pycache__/*
+Notebooks/plots/
 *.py[cod]
 
 # C extensions
