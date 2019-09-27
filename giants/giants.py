@@ -277,12 +277,13 @@ class Giant(object):
         foldedtimes = time % (period)
         foldtimesort = np.argsort(foldedtimes)
         foldfluxes = flux[foldtimesort]
-        plt.subplot2grid((4,4),(3,0),colspan=2)
+        plt.subplot2grid((4,4), (3,0),colspan=2)
         plt.scatter(foldedtimes, flux, s=2)
         plt.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes,40), lw=2, color='r')
         plt.xlabel('Time (d)')
         plt.ylabel('Flux')
         plt.xlim(0, period)
+        plt.ylim(-0.0025, 0.025)
 
         fig = plt.gcf()
         fig.set_size_inches(12, 10)
