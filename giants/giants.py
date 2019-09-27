@@ -9,18 +9,24 @@ from astropy.stats import BoxLeastSquares
 import astropy.stats as ass
 import lightkurve as lk
 from . import PACKAGEDIR
+import warnings
+# suppress verbose astropy warnings and future warnings
+warnings.filterwarnings("ignore", module="astropy")
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 class Giant(object):
-
+    """An object to store and analyze time series data for giant stars.
+    """
     def __init__(self):
         self.cvz = self.get_cvz_targets()
         self.brightcvz = self.cvz.GAIAmag < 6.5
-
         print(f'Using the brightest {len(self.cvz[self.brightcvz])} targets.')
 
     def get_cvz_targets(self):
+        """Read in a csv of CVZ targets from a local file.
+        """
         try:
-            # full list (too big to upload to github)
+            # full list
             path = os.path.abspath(os.path.join(PACKAGEDIR, 'data', 'TICgiants_bright.csv'))
         except:
             # shorter list
@@ -28,30 +34,59 @@ class Giant(object):
         return pd.read_csv(path, skiprows=4)
 
     def get_target_list(self):
-        return self.cvz[self.brightcvz].ID.values
+        """Helper function to fetch a list of TIC IDs.
 
-    def from_lightkurve(self, ind=0, ticid=None, pld=True):
-        '''
         Returns
         -------
-        LightCurveCollection
-        '''
+        IDs : list
+            TIC IDs for bright targets in list.
+        """
+        return self.cvz[self.brightcvz].ID.values
+
+    def from_lightkurve(self, ind=0, ticid=None, pld=True, cutout_size=5):
+        """Download cutouts around target for each sector using Lightkurve
+        and create light curves.
+        Requires either `ind` or `ticid`.
+
+        Parameters
+        ----------
+        ind : int
+            Index of target array to download files for
+        ticid : int
+            TIC ID of desired target
+        pld : boolean
+            Option to detrend raw light curve with PLD
+        cutout_size : int or tuple
+            Dimensions of TESScut cutout in pixels
+
+        Returns
+        -------
+        LightCurveCollection :
+            ~lightkurve.LightCurveCollection containing raw and corrected light curves.
+        """
         if ticid == None:
             i = ind
             ticid = self.cvz[self.brightcvz].ID.values[i]
-        print(ticid)
-        tpfc = self.get_data(ticid=ticid)
-        rlc = self.photometry(tpfc[0], pld=False).normalize()
+        # search TESScut for the desired target, read its sectors
+        sr = lk.search_tesscut('tic{}'.format(ticid))
+        sectors = self._find_sectors(sr)
+        print(f'Creating light curve for target {ticid} for sectors {sectors}.')
+        # download the TargetPixelFileCollection for TESScut observations
+        tpfc = sr.download_all(cutout_size=cutout_size)
+        rlc = self._photometry(tpfc[0], pld=False).normalize()
+        # track breakpoints between sectors
         self.breakpoints = [rlc.time[-1]]
+        # iterate through TPFs and perform photometry on each of them
         for t in tpfc[1:]:
-            single_rlc = self.photometry(t, pld=False).normalize()
+            single_rlc = self._photometry(t, pld=False).normalize()
             rlc = rlc.append(single_rlc)
             self.breakpoints.append(single_rlc.time[-1])
         rlc.label = 'Raw {ticid}'
+        # do the same but with de-trending (if you want)
         if pld:
-            clc = self.photometry(tpfc[0], pld=True).normalize()
+            clc = self._photometry(tpfc[0], pld=True).normalize()
             for t in tpfc[1:]:
-                single_clc = self.photometry(t, pld=True).normalize()
+                single_clc = self._photometry(t, pld=True).normalize()
                 clc = clc.append(single_clc)
             clc.label = 'PLD {ticid}'
             rlc = rlc.remove_nans()
@@ -61,33 +96,40 @@ class Giant(object):
             rlc = rlc.remove_nans()
             return lk.LightCurveCollection([rlc])
 
-    def get_data(self, ticid):
-        # search for targets
-        sr = lk.search_tesscut('tic{}'.format(ticid))
-        # download a tpf collection
-        tpfc = sr.download_all(cutout_size=5)
-        return tpfc
-
     def from_eleanor(self, ticid):
+        """Download light curves from Eleanor for desired target. Eleanor light
+        curves include:
+        - raw : raw flux light curve
+        - corr : corrected flux light curve
+        - pca : principle component analysis light curve
+        - psf : point spread function photometry light curve
+
+        Parameters
+        ----------
+        ticid : int
+            TIC ID of desired target
+
+        Returns
+        -------
+        LightCurveCollection :
+            ~lightkurve.LightCurveCollection containing raw and corrected light curves.
+        """
+        # search TESScut to figure out which sectors you need (there's probably a better way to do this)
         sr = lk.search_tesscut(ticid)
-        sectors = []
-        for desc in sr.table['description']:
-            sectors.append(int(re.search(r'\d+', str(desc)).group()))
-
+        sectors = self._find_sectors(sr)
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
-
+        # download target data for the desired source for only the first available sector
         star = eleanor.Source(tic=ticid, sector=sectors[0], tc=True)
         data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
         q = data.quality == 0
-
         # create raw flux light curve
         raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], label='raw').remove_nans().normalize()
         corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], label='corr').remove_nans().normalize()
         pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], label='pca').remove_nans().normalize()
         psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], label='psf').remove_nans().normalize()
-
+        #track breakpoints between sectors
         self.breakpoints = [raw_lc.time[-1]]
-
+        # iterate through extra sectors and append the light curves
         if len(sectors) > 1:
             for s in sectors[1:]:
                 star = eleanor.Source(tic=ticid, sector=s, tc=True)
@@ -100,10 +142,18 @@ class Giant(object):
                 psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q]).remove_nans().normalize())
 
                 self.breakpoints.append(raw_lc.time[-1])
-
+        # store in a LightCurveCollection object and return
         return lk.LightCurveCollection([raw_lc, corr_lc, pca_lc, psf_lc])
 
-    def photometry(self, tpf, pld=True):
+    def _find_sectors(self, sr):
+        """Helper function to read sectors from a search result."""
+        sectors = []
+        for desc in sr.table['description']:
+            sectors.append(int(re.search(r'\d+', str(desc)).group()))
+        return sectors
+
+    def _photometry(self, tpf, pld=True):
+        """Helper function to perform photometry on a pixel level observation."""
         if pld:
             pld = tpf.to_corrector('pld')
             lc = pld.correct(aperture_mask='threshold', pld_aperture_mask='all', use_gp=False)
@@ -112,7 +162,20 @@ class Giant(object):
         return lc
 
     def plot(self, ticid, use='eleanor'):
+        """Produce a quick look plot to characterize giants in the TESS catalog.
 
+        Parameters
+        ----------
+        ticid : int
+            TIC ID of desired target
+        use : "lightkurve" or "eleanor"
+            Which package do you want to use to access the data?
+
+        Saves
+        -----
+        {tic}_quicklook.png : png image
+            PNG of quick look plot
+        """
         plt.clf()
 
         '''
@@ -176,8 +239,6 @@ class Giant(object):
 
         power = lc.to_periodogram().power
         freq = np.linspace(1./15, 1./.01, len(power))
-        # freq = np.linspace(1./15, 1./.01, 100000)
-        # power = ass.LombScargle(time, flux, flux_err).power(freq)
         ps = 1./freq
 
         '''
@@ -224,5 +285,7 @@ class Giant(object):
         plt.xlim(0, period)
 
         fig = plt.gcf()
-        fig.set_size_inches(12,10)
+        fig.set_size_inches(12, 10)
+
+        fig.savefig(str(ticid)+'_quicklook.png')
         plt.show()
