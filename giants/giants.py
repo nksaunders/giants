@@ -218,8 +218,11 @@ class Giant(object):
         # mask first 12h after momentum dump
         momdump = (time > 1339) * (time < 1341)
         # also the burn in
-        burnin = (time < 1327)
-        mask = momdump | burnin
+        burnin = np.zeros_like(time, dtype=bool)
+        burnin[:100] = True
+        # also 7 sigma outliers
+        _, outliers = lc.remove_outliers(sigma=7, return_mask=True)
+        mask = momdump | burnin | outliers
         time = time[~mask]
         flux = flux[~mask]
         flux_err = flux_err[~mask]
