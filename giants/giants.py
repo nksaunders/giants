@@ -123,10 +123,10 @@ class Giant(object):
         data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
         q = data.quality == 0
         # create raw flux light curve
-        raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], label='raw').remove_nans().normalize()
-        corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], label='corr').remove_nans().normalize()
-        pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], label='pca').remove_nans().normalize()
-        psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], label='psf').remove_nans().normalize()
+        raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], label='raw', time_format='btjd').remove_nans().normalize()
+        corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], label='corr', time_format='btjd').remove_nans().normalize()
+        pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], label='pca', time_format='btjd').remove_nans().normalize()
+        psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], label='psf', time_format='btjd').remove_nans().normalize()
         #track breakpoints between sectors
         self.breakpoints = [raw_lc.time[-1]]
         # iterate through extra sectors and append the light curves
@@ -136,10 +136,10 @@ class Giant(object):
                 data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
                 q = data.quality == 0
 
-                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q]).remove_nans().normalize())
-                corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q]).remove_nans().normalize())
-                pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q]).remove_nans().normalize())
-                psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q]).remove_nans().normalize())
+                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q]), time_format='btjd'.remove_nans().normalize())
+                corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], time_format='btjd').remove_nans().normalize())
+                pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], time_format='btjd').remove_nans().normalize())
+                psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], time_format='btjd').remove_nans().normalize())
 
                 self.breakpoints.append(raw_lc.time[-1])
         # store in a LightCurveCollection object and return
@@ -213,16 +213,17 @@ class Giant(object):
             flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
             flux_err = np.ones_like(flux) * 1e-5
 
-
-        #mask first 12h after momentum dump
+        # mask first 12h after momentum dump
         momdump = (time > 1339) * (time < 1341)
-        time = time[~momdump]
-        flux = flux[~momdump]
+        # also the burn in
+        burnin = (time < 1327)
+        mask = momdump | burnin
+        time = time[~mask]
+        flux = flux[~mask]
+        flux_err = flux_err[~mask]
 
-        plt.legend()
-        plt.ylabel('Normalized Flux')
-        plt.xlabel('Time')
-
+        # store masked values
+        lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
         '''
         Plot Filtered Light Curve
