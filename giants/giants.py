@@ -283,7 +283,7 @@ class Giant(object):
         plt.xlabel('Time (d)')
         plt.ylabel('Flux')
         plt.xlim(0, period)
-        plt.ylim(-0.025, 0.025)
+        plt.ylim(-0.0025, 0.0025)
 
         fig = plt.gcf()
         fig.set_size_inches(12, 10)
