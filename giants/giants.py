@@ -136,7 +136,7 @@ class Giant(object):
                 data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
                 q = data.quality == 0
 
-                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q]), time_format='btjd'.remove_nans().normalize())
+                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], time_format='btjd'.remove_nans().normalize())
                 corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], time_format='btjd').remove_nans().normalize())
                 pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], time_format='btjd').remove_nans().normalize())
                 psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], time_format='btjd').remove_nans().normalize())
