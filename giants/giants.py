@@ -203,8 +203,8 @@ class Giant(object):
 
         else:
             lcc = self.from_eleanor(ticid)
-            for lc,label in zip(lcc, ['raw', 'corr', 'pca', 'psf']):
-                plt.plot(lc.time, lc.flux, label=label)
+            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.2, 0, 0.2, -.4]):
+                plt.plot(lc.time, lc.flux + offset, label=label)
             for val in self.breakpoints:
                 plt.axvline(val, c='b', linestyle='dashed')
             plt.legend(loc=0)
