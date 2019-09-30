@@ -10,6 +10,7 @@ import astropy.stats as ass
 import lightkurve as lk
 from . import PACKAGEDIR
 import warnings
+import astropy.stats as ass
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -20,7 +21,7 @@ class Giant(object):
     def __init__(self):
         self.cvz = self.get_cvz_targets()
         self.brightcvz = self.cvz.GAIAmag < 6.5
-        print(f'Using the brightest {len(self.cvz[self.brightcvz])} targets.')
+        # print(f'Using the brightest {len(self.cvz[self.brightcvz])} targets.')
 
     def get_cvz_targets(self):
         """Read in a csv of CVZ targets from a local file.
@@ -161,17 +162,19 @@ class Giant(object):
             lc = tpf.to_lightcurve(aperture_mask='threshold')
         return lc
 
-    def plot(self, ticid, use='eleanor', outdir='plots'):
+    def plot(self, ticid, lc_source='eleanor', outdir='plots', input_lc=None):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
         Parameters
         ----------
         ticid : int
             TIC ID of desired target
-        use : "lightkurve" or "eleanor"
+        lc_source : "lightkurve" or "eleanor"
             Which package do you want to use to access the data?
         outdir : str
             Directory to save quick look plots into. Must be an existing directory.
+        input_lc : ~lightkurve.LightCurve
+            A LightCurve object containing an injection recovery test signal.
 
         Saves
         -----
@@ -186,7 +189,7 @@ class Giant(object):
         '''
         plt.subplot2grid((4,4),(0,0),colspan=2)
 
-        if use == 'lightkurve':
+        if lc_source == 'lightkurve':
             lcc = self.from_lightkurve(ticid)
             q = lcc[0].quality == 0
 
@@ -201,7 +204,7 @@ class Giant(object):
             flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
             flux_err = lc.flux_err[q]
 
-        else:
+        elif lc_source == 'eleanor':
             lcc = self.from_eleanor(ticid)
             for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.2, 0, 0.2, -.4]):
                 plt.plot(lc.time, lc.flux + offset, label=label)
@@ -215,13 +218,22 @@ class Giant(object):
             flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
             flux_err = np.ones_like(flux) * 1e-5
 
+        elif lc_source == 'injection':
+            lc = input_lc
+            plt.plot(lc.time, lc.flux, label=lc.label)
+            self.breakpoints = []
+            time = lc.time
+            flux = lc.flux - 1
+            flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux_err = np.ones_like(flux) * 1e-5
+
         # mask first 12h after momentum dump
         momdump = (time > 1339) * (time < 1341)
         # also the burn in
         burnin = np.zeros_like(time, dtype=bool)
-        burnin[:100] = True
-        # also 7 sigma outliers
-        _, outliers = lc.remove_outliers(sigma=7, return_mask=True)
+        burnin[:120] = True
+        # also 6 sigma outliers
+        _, outliers = lc.remove_outliers(sigma=6, return_mask=True)
         mask = momdump | burnin | outliers
         time = time[~mask]
         flux = flux[~mask]
@@ -243,8 +255,9 @@ class Giant(object):
         plt.ylabel('Normalized Flux')
         plt.xlabel('Time')
 
-        power = lc.to_periodogram().power
-        freq = np.linspace(1./15, 1./.01, len(power))
+        # power = lc.to_periodogram().power
+        freq = np.linspace(1./15, 1./.01, 100000)
+        power = ass.LombScargle(time, flux, flux_err).power(freq)
         ps = 1./freq
 
         '''
@@ -268,6 +281,7 @@ class Giant(object):
         model = BoxLeastSquares(time, flux)
         results = model.autopower(0.16)
         period = results.period[np.argmax(results.power)]
+        t0 = results.transit_time[np.argmax(results.power)]
 
         plt.plot(results.period, results.power, "k", lw=0.5)
         plt.xlim(results.period.min(), results.period.max())
@@ -280,16 +294,19 @@ class Giant(object):
             plt.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed")
             plt.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed")
 
-        foldedtimes = time % (period)
+        phase = (t0 % period) / period
+        foldedtimes = (((time - phase * period) / period) % 1)
+        foldedtimes[foldedtimes > 0.5] -= 1
         foldtimesort = np.argsort(foldedtimes)
         foldfluxes = flux[foldtimesort]
         plt.subplot2grid((4,4), (3,0),colspan=2)
-        plt.scatter(foldedtimes, flux, s=2)
+        plt.scatter(foldedtimes, flux, s=2, label=f'P={period:.2f}')
         plt.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes,40), lw=2, color='r')
-        plt.xlabel('Time (d)')
+        plt.xlabel('Phase')
         plt.ylabel('Flux')
-        plt.xlim(0, period)
+        plt.xlim(-0.5, 0.5)
         plt.ylim(-0.0025, 0.0025)
+        plt.legend(loc=0)
 
         fig = plt.gcf()
         fig.set_size_inches(12, 10)
