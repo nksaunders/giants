@@ -300,8 +300,8 @@ class Giant(object):
         foldtimesort = np.argsort(foldedtimes)
         foldfluxes = flux[foldtimesort]
         plt.subplot2grid((4,4), (3,0),colspan=2)
-        plt.scatter(foldedtimes, flux, s=2, label=f'P={period:.2f}')
-        plt.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes,40), lw=2, color='r')
+        plt.scatter(foldedtimes, flux, s=2)
+        plt.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes,40), lw=2, color='r', label=f'P={period:.2f} days')
         plt.xlabel('Phase')
         plt.ylabel('Flux')
         plt.xlim(-0.5, 0.5)
