@@ -271,6 +271,16 @@ class Giant(object):
         plt.xlabel("Frequency [uHz]")
         plt.ylabel("Power")
         plt.xlim(10, 400)
+        # annotate with stellar params
+        Gmag = self.cvz[self.cvz['ID'] == ticid]['GAIAmag'].values[0]
+        Teff = self.cvz[self.cvz['ID'] == ticid]['Teff'].values[0]
+        R = self.cvz[self.cvz['ID'] == ticid]['rad'].values[0]
+        M = self.cvz[self.cvz['ID'] == ticid]['mass'].values[0]
+        plt.annotate(rf"G = {Gmag:.3f}", xy=(.05, .08), xycoords='axes fraction')
+        plt.annotate(rf"Teff = {int(Teff)} K", xy=(.05, .06), xycoords='axes fraction')
+        plt.annotate(rf"R = {R:.3f} $R_\odot$", xy=(.05, .04), xycoords='axes fraction')
+        plt.annotate(rf"M = {M:.3f} $M_\odot$", xy=(.05, .02), xycoords='axes fraction')
+
 
         '''
         Plot BLS
