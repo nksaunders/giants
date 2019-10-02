@@ -345,6 +345,7 @@ class Giant(object):
         plt.legend(loc=0)
 
         fig = plt.gcf()
+        plt.title(f'{ticid}')
         fig.set_size_inches(12, 10)
 
         fig.savefig(outdir+'/'+str(ticid)+'_quicklook.png')
@@ -352,9 +353,7 @@ class Giant(object):
 
     def validate_transit(self, ticid=None, lc=None, rprs=0.02):
         """Take a closer look at potential transit signals."""
-        import starry
-        from astropy import units as u
-        from astropy.constants import G
+        from .transit import create_starry_model
 
         if ticid is not None:
             lc = self.from_eleanor(ticid)[1]
@@ -369,35 +368,6 @@ class Giant(object):
         if rprs is None:
             depth = results.depth[np.argmax(results.power)]
             rprs = depth ** 2
-
-        def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=1.):
-            """ """
-            # instantiate a starry primary object (star)
-            star = starry.kepler.Primary()
-            # calculate separation
-            a = _calculate_separation(m_star, period)
-            # quadradic limb darkening
-            star[1] = 0.40
-            star[2] = 0.26
-            # instantiate a starry secondary object (planet)
-            planet = starry.kepler.Secondary(lmax=5)
-            # define its parameters
-            planet.r = rprs * star.r
-            planet.porb = period
-            planet.tref = t0
-            planet.inc = i
-            planet.ecc = ecc
-            planet.a = (a*u.AU).to(u.solRad).value # in units of stellar radius
-            # create a system and compute its lightcurve
-            system = starry.kepler.System(star, planet)
-            system.compute(time)
-            # return the light curve
-            return system.lightcurve
-
-        def _calculate_separation(m_star, period):
-            """ """
-            a = (((G*m_star*u.solMass/(4*np.pi**2))*(period*u.day)**2)**(1/3))
-            return a.to(u.AU).value
 
         # create the model
         model_flux = create_starry_model(lc.time, period=period, t0=t0, rprs=rprs) - 1
