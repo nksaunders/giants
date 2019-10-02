@@ -162,6 +162,26 @@ class Giant(object):
             lc = tpf.to_lightcurve(aperture_mask='threshold')
         return lc
 
+    def _clean_data(self, lc):
+        """ """
+        # mask first 12h after momentum dump
+        momdump = (lc.time > 1339) * (lc.time < 1341)
+        # also the burn in
+        burnin = np.zeros_like(lc.time, dtype=bool)
+        burnin[:120] = True
+        # also 6 sigma outliers
+        _, outliers = lc.remove_outliers(sigma=6, return_mask=True)
+        mask = momdump | burnin | outliers
+        lc.time = lc.time[~mask]
+        lc.flux = lc.flux[~mask]
+        lc.flux_err = lc.flux_err[~mask]
+        lc.flux = lc.flux - 1
+        lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 100)
+
+        # store cleaned lc
+        self.lc = lc
+        return lc
+
     def plot(self, ticid, lc_source='eleanor', outdir='plots', input_lc=None):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
@@ -200,13 +220,14 @@ class Giant(object):
                 plt.axvline(val, c='b', linestyle='dashed')
             lc = lcc[-1]
             time = lc.time[q]
-            flux = lc.flux[q] - 1
-            flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux[q] # - 1
+            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
             flux_err = lc.flux_err[q]
+            lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
         elif lc_source == 'eleanor':
             lcc = self.from_eleanor(ticid)
-            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.2, 0, 0.2, -.4]):
+            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.1, 0, 0.1, -.2]):
                 plt.plot(lc.time, lc.flux + offset, label=label)
             for val in self.breakpoints:
                 plt.axvline(val, c='b', linestyle='dashed')
@@ -214,20 +235,25 @@ class Giant(object):
 
             lc = lcc[1] # using corr_lc
             time = lc.time
-            flux = lc.flux - 1
-            flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux # - 1
+            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
             flux_err = np.ones_like(flux) * 1e-5
+            lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
         elif lc_source == 'injection':
             lc = input_lc
             plt.plot(lc.time, lc.flux, label=lc.label)
             self.breakpoints = []
             time = lc.time
-            flux = lc.flux - 1
-            flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux # - 1
+            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
             flux_err = np.ones_like(flux) * 1e-5
+            lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
-        # mask first 12h after momentum dump
+        lc = self._clean_data(lc)
+        time, flux, flux_err = lc.time, lc.flux, lc.flux_err
+
+        """    # mask first 12h after momentum dump
         momdump = (time > 1339) * (time < 1341)
         # also the burn in
         burnin = np.zeros_like(time, dtype=bool)
@@ -240,7 +266,7 @@ class Giant(object):
         flux_err = flux_err[~mask]
 
         # store masked values
-        lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
+        self.lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)"""
 
         '''
         Plot Filtered Light Curve
@@ -276,7 +302,7 @@ class Giant(object):
         Teff = self.cvz[self.cvz['ID'] == ticid]['Teff'].values[0]
         R = self.cvz[self.cvz['ID'] == ticid]['rad'].values[0]
         M = self.cvz[self.cvz['ID'] == ticid]['mass'].values[0]
-        plt.annotate(rf"G = {Gmag:.3f}", xy=(.05, .08), xycoords='axes fraction')
+        plt.annotate(rf"G mag = {Gmag:.3f}", xy=(.05, .08), xycoords='axes fraction')
         plt.annotate(rf"Teff = {int(Teff)} K", xy=(.05, .06), xycoords='axes fraction')
         plt.annotate(rf"R = {R:.3f} $R_\odot$", xy=(.05, .04), xycoords='axes fraction')
         plt.annotate(rf"M = {M:.3f} $M_\odot$", xy=(.05, .02), xycoords='axes fraction')
@@ -322,4 +348,78 @@ class Giant(object):
         fig.set_size_inches(12, 10)
 
         fig.savefig(outdir+'/'+str(ticid)+'_quicklook.png')
+        plt.show()
+
+    def validate_transit(self, ticid=None, lc=None, rprs=0.02):
+        """Take a closer look at potential transit signals."""
+        import starry
+        from astropy import units as u
+        from astropy.constants import G
+
+        if ticid is not None:
+            lc = self.from_eleanor(ticid)[1]
+            lc = self._clean_data(lc)
+        elif lc is None:
+            lc = self.lc
+
+        model = BoxLeastSquares(lc.time, lc.flux)
+        results = model.autopower(0.16)
+        period = results.period[np.argmax(results.power)]
+        t0 = results.transit_time[np.argmax(results.power)]
+        if rprs is None:
+            depth = results.depth[np.argmax(results.power)]
+            rprs = depth ** 2
+
+        def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=1.):
+            """ """
+            # instantiate a starry primary object (star)
+            star = starry.kepler.Primary()
+            # calculate separation
+            a = _calculate_separation(m_star, period)
+            # quadradic limb darkening
+            star[1] = 0.40
+            star[2] = 0.26
+            # instantiate a starry secondary object (planet)
+            planet = starry.kepler.Secondary(lmax=5)
+            # define its parameters
+            planet.r = rprs * star.r
+            planet.porb = period
+            planet.tref = t0
+            planet.inc = i
+            planet.ecc = ecc
+            planet.a = (a*u.AU).to(u.solRad).value # in units of stellar radius
+            # create a system and compute its lightcurve
+            system = starry.kepler.System(star, planet)
+            system.compute(time)
+            # return the light curve
+            return system.lightcurve
+
+        def _calculate_separation(m_star, period):
+            """ """
+            a = (((G*m_star*u.solMass/(4*np.pi**2))*(period*u.day)**2)**(1/3))
+            return a.to(u.AU).value
+
+        # create the model
+        model_flux = create_starry_model(lc.time, period=period, t0=t0, rprs=rprs) - 1
+        model_lc = lk.LightCurve(time=lc.time, flux=model_flux)
+
+        fig, ax = plt.subplots(2, 1, figsize=(12,10))
+        '''
+        Plot folded transit
+        -------------------
+        '''
+        lc.scatter(ax=ax[0], c='k', label='Corrected Flux')
+        model_lc.plot(ax=ax[0], c='r', lw=2, label='Transit Model')
+        ax[0].set_ylim([-.002, .002])
+
+        '''
+        Plot unfolded transit
+        ---------------------
+        '''
+        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=f'folded at {period:.3f} days')
+        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', label='binned', lw=2)
+        model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2, label="transit Model")
+        ax[1].set_xlim([-0.5, .5])
+        ax[1].set_ylim([-.002, .002])
+
         plt.show()
