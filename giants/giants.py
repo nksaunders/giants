@@ -118,6 +118,8 @@ class Giant(object):
         # search TESScut to figure out which sectors you need (there's probably a better way to do this)
         sr = lk.search_tesscut(ticid)
         sectors = self._find_sectors(sr)
+        if isinstance(ticid, str):
+            ticid = int(re.search(r'\d+', str(ticid)).group())
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
         star = eleanor.Source(tic=ticid, sector=sectors[0], tc=True)
@@ -168,10 +170,10 @@ class Giant(object):
         momdump = (lc.time > 1339) * (lc.time < 1341)
         # also the burn in
         burnin = np.zeros_like(lc.time, dtype=bool)
-        burnin[:120] = True
+        burnin[:40] = True
         # also 6 sigma outliers
         _, outliers = lc.remove_outliers(sigma=6, return_mask=True)
-        mask = momdump | burnin | outliers
+        mask = momdump | outliers | burnin
         lc.time = lc.time[~mask]
         lc.flux = lc.flux[~mask]
         lc.flux_err = lc.flux_err[~mask]
@@ -297,16 +299,21 @@ class Giant(object):
         plt.xlabel("Frequency [uHz]")
         plt.ylabel("Power")
         plt.xlim(10, 400)
-        # annotate with stellar params
-        Gmag = self.cvz[self.cvz['ID'] == ticid]['GAIAmag'].values[0]
-        Teff = self.cvz[self.cvz['ID'] == ticid]['Teff'].values[0]
-        R = self.cvz[self.cvz['ID'] == ticid]['rad'].values[0]
-        M = self.cvz[self.cvz['ID'] == ticid]['mass'].values[0]
-        plt.annotate(rf"G mag = {Gmag:.3f}", xy=(.05, .08), xycoords='axes fraction')
-        plt.annotate(rf"Teff = {int(Teff)} K", xy=(.05, .06), xycoords='axes fraction')
-        plt.annotate(rf"R = {R:.3f} $R_\odot$", xy=(.05, .04), xycoords='axes fraction')
-        plt.annotate(rf"M = {M:.3f} $M_\odot$", xy=(.05, .02), xycoords='axes fraction')
-
+        try:
+            # annotate with stellar params
+            # won't work for TIC ID's not in the list
+            if isinstance(ticid, str):
+                ticid = int(re.search(r'\d+', str(ticid)).group())
+            Gmag = self.cvz[self.cvz['ID'] == ticid]['GAIAmag'].values[0]
+            Teff = self.cvz[self.cvz['ID'] == ticid]['Teff'].values[0]
+            R = self.cvz[self.cvz['ID'] == ticid]['rad'].values[0]
+            M = self.cvz[self.cvz['ID'] == ticid]['mass'].values[0]
+            plt.annotate(rf"G mag = {Gmag:.3f}", xy=(.05, .08), xycoords='axes fraction')
+            plt.annotate(rf"Teff = {int(Teff)} K", xy=(.05, .06), xycoords='axes fraction')
+            plt.annotate(rf"R = {R:.3f} $R_\odot$", xy=(.05, .04), xycoords='axes fraction')
+            plt.annotate(rf"M = {M:.3f} $M_\odot$", xy=(.05, .02), xycoords='axes fraction')
+        except:
+            pass
 
         '''
         Plot BLS
@@ -345,7 +352,7 @@ class Giant(object):
         plt.legend(loc=0)
 
         fig = plt.gcf()
-        plt.title(f'{ticid}')
+        fig.suptitle(f'{ticid}', fontsize=14)
         fig.set_size_inches(12, 10)
 
         fig.savefig(outdir+'/'+str(ticid)+'_quicklook.png')
@@ -392,4 +399,18 @@ class Giant(object):
         ax[1].set_xlim([-0.5, .5])
         ax[1].set_ylim([-.002, .002])
 
+        ax[0].set_title(f'{ticid}', fontsize=14)
+
         plt.show()
+
+    def plot_gaia_overlay(self, ticid=None, tpf=None):
+        """Check if the source is contaminated."""
+        from .transit import add_gaia_figure_elements
+
+        if tpf is None:
+            tpf = lk.search_tesscut(ticid)[0].download()
+
+        fig = tpf.plot()
+        fig = add_gaia_figure_elements(tpf, fig)
+
+        return fig
