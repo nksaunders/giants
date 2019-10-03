@@ -380,7 +380,7 @@ class Giant(object):
         model_flux = create_starry_model(lc.time, period=period, t0=t0, rprs=rprs) - 1
         model_lc = lk.LightCurve(time=lc.time, flux=model_flux)
 
-        fig, ax = plt.subplots(2, 1, figsize=(12,10))
+        fig, ax = plt.subplots(3, 1, figsize=(12,14))
         '''
         Plot folded transit
         -------------------
@@ -388,6 +388,7 @@ class Giant(object):
         lc.scatter(ax=ax[0], c='k', label='Corrected Flux')
         model_lc.plot(ax=ax[0], c='r', lw=2, label='Transit Model')
         ax[0].set_ylim([-.002, .002])
+        ax[0].set_xlim([lc.time[0], lc.time[-1]])
 
         '''
         Plot unfolded transit
@@ -398,6 +399,16 @@ class Giant(object):
         model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2, label="transit Model")
         ax[1].set_xlim([-0.5, .5])
         ax[1].set_ylim([-.002, .002])
+
+        '''
+        Zoom unfolded transit
+        ---------------------
+        '''
+        lc.fold(period, t0).scatter(ax=ax[2], c='k', label=f'folded at {period:.3f} days')
+        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[2], c='b', label='binned', lw=2)
+        model_lc.fold(period, t0).plot(ax=ax[2], c='r', lw=2, label="transit Model")
+        ax[2].set_xlim([-0.1, .1])
+        ax[2].set_ylim([-.002, .002])
 
         ax[0].set_title(f'{ticid}', fontsize=14)
 
