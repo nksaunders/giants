@@ -209,6 +209,7 @@ class Giant(object):
         Plot Light Curve
         ----------------
         '''
+        self.ticid = ticid
         plt.subplot2grid((4,4),(0,0),colspan=2)
 
         if lc_source == 'lightkurve':
@@ -242,7 +243,7 @@ class Giant(object):
             flux_err = np.ones_like(flux) * 1e-5
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
-        elif lc_source == 'injection':
+        elif lc_source == 'input':
             lc = input_lc
             plt.plot(lc.time, lc.flux, label=lc.label)
             self.breakpoints = []
@@ -360,7 +361,7 @@ class Giant(object):
 
     def validate_transit(self, ticid=None, lc=None, rprs=0.02):
         """Take a closer look at potential transit signals."""
-        from .transit import create_starry_model
+        from .utils import create_starry_model
 
         if ticid is not None:
             lc = self.from_eleanor(ticid)[1]
@@ -416,10 +417,13 @@ class Giant(object):
 
     def plot_gaia_overlay(self, ticid=None, tpf=None):
         """Check if the source is contaminated."""
-        from .transit import add_gaia_figure_elements
+        from .utils import add_gaia_figure_elements
+
+        if ticid is None:
+            ticid = self.ticid
 
         if tpf is None:
-            tpf = lk.search_tesscut(ticid)[0].download()
+            tpf = lk.search_tesscut(ticid)[0].download(cutout_size=9)
 
         fig = tpf.plot()
         fig = add_gaia_figure_elements(tpf, fig)
