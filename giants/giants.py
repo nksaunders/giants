@@ -126,10 +126,10 @@ class Giant(object):
         data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
         q = data.quality == 0
         # create raw flux light curve
-        raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], label='raw', time_format='btjd').remove_nans().normalize()
-        corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], label='corr', time_format='btjd').remove_nans().normalize()
-        pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], label='pca', time_format='btjd').remove_nans().normalize()
-        psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], label='psf', time_format='btjd').remove_nans().normalize()
+        raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q],label='raw', time_format='btjd').remove_nans().normalize()
+        corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], flux_err=data.flux_err[q], label='corr', time_format='btjd').remove_nans().normalize()
+        pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q],label='pca', time_format='btjd').remove_nans().normalize()
+        psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q],label='psf', time_format='btjd').remove_nans().normalize()
         #track breakpoints between sectors
         self.breakpoints = [raw_lc.time[-1]]
         # iterate through extra sectors and append the light curves
@@ -139,10 +139,10 @@ class Giant(object):
                 data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
                 q = data.quality == 0
 
-                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], time_format='btjd').remove_nans().normalize())
-                corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], time_format='btjd').remove_nans().normalize())
-                pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], time_format='btjd').remove_nans().normalize())
-                psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], time_format='btjd').remove_nans().normalize())
+                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
 
                 self.breakpoints.append(raw_lc.time[-1])
         # store in a LightCurveCollection object and return
@@ -323,7 +323,7 @@ class Giant(object):
         plt.subplot2grid((4,4),(2,0),colspan=2)
 
         model = BoxLeastSquares(time, flux)
-        results = model.autopower(0.16)
+        results = model.autopower(0.16, maximum_period=27.)
         period = results.period[np.argmax(results.power)]
         t0 = results.transit_time[np.argmax(results.power)]
 
@@ -383,8 +383,8 @@ class Giant(object):
 
         fig, ax = plt.subplots(3, 1, figsize=(12,14))
         '''
-        Plot folded transit
-        -------------------
+        Plot unfolded transit
+        ---------------------
         '''
         lc.scatter(ax=ax[0], c='k', label='Corrected Flux')
         model_lc.plot(ax=ax[0], c='r', lw=2, label='Transit Model')
@@ -392,18 +392,18 @@ class Giant(object):
         ax[0].set_xlim([lc.time[0], lc.time[-1]])
 
         '''
-        Plot unfolded transit
-        ---------------------
+        Plot folded transit
+        -------------------
         '''
-        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=f'folded at {period:.3f} days')
+        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=f'P={period:.3f}, t0={t0}')
         lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', label='binned', lw=2)
         model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2, label="transit Model")
         ax[1].set_xlim([-0.5, .5])
         ax[1].set_ylim([-.002, .002])
 
         '''
-        Zoom unfolded transit
-        ---------------------
+        Zoom folded transit
+        -------------------
         '''
         lc.fold(period, t0).scatter(ax=ax[2], c='k', label=f'folded at {period:.3f} days')
         lc.fold(period, t0).bin(binsize=7).plot(ax=ax[2], c='b', label='binned', lw=2)
