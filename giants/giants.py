@@ -135,16 +135,19 @@ class Giant(object):
         # iterate through extra sectors and append the light curves
         if len(sectors) > 1:
             for s in sectors[1:]:
-                star = eleanor.Source(tic=ticid, sector=s, tc=True)
-                data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
-                q = data.quality == 0
+                try: # some sectors fail randomly
+                    star = eleanor.Source(tic=ticid, sector=s, tc=True)
+                    data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
+                    q = data.quality == 0
 
-                raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
-                corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
-                pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
-                psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                    raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                    corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                    pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                    psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
 
-                self.breakpoints.append(raw_lc.time[-1])
+                    self.breakpoints.append(raw_lc.time[-1])
+                except:
+                    continue
         # store in a LightCurveCollection object and return
         return lk.LightCurveCollection([raw_lc, corr_lc, pca_lc, psf_lc])
 
