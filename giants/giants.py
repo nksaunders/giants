@@ -11,6 +11,10 @@ import lightkurve as lk
 from . import PACKAGEDIR
 import warnings
 import astropy.stats as ass
+import exoplanet as xo
+import starry
+import pymc3 as pm
+import theano.tensor as tt
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -18,21 +22,21 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 class Giant(object):
     """An object to store and analyze time series data for giant stars.
     """
-    def __init__(self):
-        self.cvz = self.get_cvz_targets()
-        self.brightcvz = self.cvz.GAIAmag < 6.5
+    def __init__(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
+        self.cvz = self.get_cvz_targets(csv_path)
+        self.brightcvz = np.ones(len(self.cvz), dtype=bool) # self.cvz.GAIAmag < 12.5
         # print(f'Using the brightest {len(self.cvz[self.brightcvz])} targets.')
 
-    def get_cvz_targets(self):
+    def get_cvz_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         """Read in a csv of CVZ targets from a local file.
         """
-        try:
+        # try:
             # full list
-            path = os.path.abspath(os.path.join(PACKAGEDIR, 'data', 'TICgiants_bright.csv'))
-        except:
+        path = os.path.abspath(os.path.abspath(os.path.join(PACKAGEDIR, csv_path)))
+         #except:
             # shorter list
-            path = os.path.abspath(os.path.join(PACKAGEDIR, 'data', 'TICgiants_CVZ.csv'))
-        return pd.read_csv(path, skiprows=4)
+            # path = os.path.abspath(os.path.join(PACKAGEDIR, 'data', 'TICgiants_CVZ.csv'))
+        return pd.read_csv(path, skiprows=0)
 
     def get_target_list(self):
         """Helper function to fetch a list of TIC IDs.
@@ -274,6 +278,13 @@ class Giant(object):
         # store masked values
         self.lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)"""
 
+        model = BoxLeastSquares(time, flux)
+        results = model.autopower(0.16, maximum_period=27.)
+        period = results.period[np.argmax(results.power)]
+        t0 = results.transit_time[np.argmax(results.power)]
+        depth = results.depth[np.argmax(results.power)]
+        depth_snr = results.depth_snr[np.argmax(results.power)]
+
         '''
         Plot Filtered Light Curve
         -------------------------
@@ -298,7 +309,7 @@ class Giant(object):
         '''
         plt.subplot2grid((4,4),(0,2),colspan=2,rowspan=4)
         plt.loglog(freq/24/3600 * 1e6, power)
-        plt.loglog(freq/24/3600 * 1e6, scipy.ndimage.filters.gaussian_filter(power, 50), color='r', alpha=0.8, lw=2.5)
+        plt.loglog(freq/24/3600 * 1e6, scipy.ndimage.filters.gaussian_filter(power, 150), color='r', alpha=0.8, lw=2.5)
         plt.axvline(283,-1,1, ls='--', color='k')
         plt.xlabel("Frequency [uHz]")
         plt.ylabel("Power")
@@ -312,10 +323,14 @@ class Giant(object):
             Teff = self.cvz[self.cvz['ID'] == ticid]['Teff'].values[0]
             R = self.cvz[self.cvz['ID'] == ticid]['rad'].values[0]
             M = self.cvz[self.cvz['ID'] == ticid]['mass'].values[0]
-            plt.annotate(rf"G mag = {Gmag:.3f}", xy=(.05, .08), xycoords='axes fraction')
-            plt.annotate(rf"Teff = {int(Teff)} K", xy=(.05, .06), xycoords='axes fraction')
-            plt.annotate(rf"R = {R:.3f} $R_\odot$", xy=(.05, .04), xycoords='axes fraction')
-            plt.annotate(rf"M = {M:.3f} $M_\odot$", xy=(.05, .02), xycoords='axes fraction')
+            plt.annotate(rf"G mag = {Gmag:.3f}", xy=(.02, .08), xycoords='axes fraction')
+            plt.annotate(rf"Teff = {int(Teff)} K", xy=(.02, .06), xycoords='axes fraction')
+            plt.annotate(rf"R = {R:.3f} $R_\odot$", xy=(.02, .04), xycoords='axes fraction')
+            plt.annotate(rf"M = {M:.3f} $M_\odot$", xy=(.02, .02), xycoords='axes fraction')
+            plt.annotate(f'depth = {depth:.4f}', xy=(.35, .08), xycoords='axes fraction')
+            plt.annotate(f'depth_snr = {depth_snr:.4f}', xy=(.35, .06), xycoords='axes fraction')
+            plt.annotate(f'period = {period:.3f} days', xy=(.35, .04), xycoords='axes fraction')
+            plt.annotate(f't0 = {t0:.3f}', xy=(.35, .02), xycoords='axes fraction')
         except:
             pass
 
@@ -324,11 +339,6 @@ class Giant(object):
         --------
         '''
         plt.subplot2grid((4,4),(2,0),colspan=2)
-
-        model = BoxLeastSquares(time, flux)
-        results = model.autopower(0.16, maximum_period=27.)
-        period = results.period[np.argmax(results.power)]
-        t0 = results.transit_time[np.argmax(results.power)]
 
         plt.plot(results.period, results.power, "k", lw=0.5)
         plt.xlim(results.period.min(), results.period.max())
@@ -348,11 +358,23 @@ class Giant(object):
         foldfluxes = flux[foldtimesort]
         plt.subplot2grid((4,4), (3,0),colspan=2)
         plt.scatter(foldedtimes, flux, s=2)
-        plt.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes,40), lw=2, color='r', label=f'P={period:.2f} days')
+        plt.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='r', label=f'P={period:.2f} days')
         plt.xlabel('Phase')
         plt.ylabel('Flux')
         plt.xlim(-0.5, 0.5)
         plt.ylim(-0.0025, 0.0025)
+
+        # plt.plot([], [], label=f'depth = {depth:.4f}')
+        # plt.plot([], [], label=f'depth_snr = {depth_snr:.4f}')
+        # plt.plot([], [], label=f'period = {period:.3f} days')
+        # plt.plot([], [], label=f't0 = {t0:.3f}')
+        '''
+        plt.annotate(f'depth = {depth:.4f}', xy=(.05, .08), xycoords='axes fraction')
+        plt.annotate(f'depth_snr = {depth_snr:.4f}', xy=(.05, .06), xycoords='axes fraction')
+        plt.annotate(f'period = {period:.3f} days', xy=(.05, .04), xycoords='axes fraction')
+        plt.annotate(f't0 = {t0:.3f}', xy=(.05, .02), xycoords='axes fraction')
+        '''
+
         plt.legend(loc=0)
 
         fig = plt.gcf()
@@ -432,3 +454,207 @@ class Giant(object):
         fig = add_gaia_figure_elements(tpf, fig)
 
         return fig
+
+    def fit_starry_model(self, lc=None, **kwargs):
+        """
+
+        """
+        if lc is None:
+            lc = self.lc
+
+        x, y, yerr = lc.time, lc.flux, lc.flux_err
+        model, static_lc = self._fit(x, y, yerr, **kwargs)
+
+        model_lc = lk.LightCurve(time=x, flux=static_lc)
+
+        return model, model_lc
+
+    def plot_starry_model(self, lc=None, model=None, **kwargs):
+        """ """
+        if lc is None:
+            lc = self.lc
+
+        if model is None:
+            model, model_lc = self.fit_starry_model(**kwargs)
+
+        with model:
+            period = model.map_soln['period'][0]
+            t0 = model.map_soln['t0'][0]
+            r_pl = model.map_soln['r_pl'] * 9.96
+
+        fig, ax = plt.subplots(3, 1, figsize=(12,14))
+        '''
+        Plot unfolded transit
+        ---------------------
+        '''
+        lc.scatter(ax=ax[0], c='k', label='Corrected Flux')
+        model_lc.plot(ax=ax[0], c='r', lw=2, label='Transit Model')
+        ax[0].set_ylim([-.002, .002])
+        ax[0].set_xlim([lc.time[0], lc.time[-1]])
+
+        '''
+        Plot folded transit
+        -------------------
+        '''
+        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=rf'$P={period:.3f} days, t0={t0:.3f}, R_p={r_pl:.3f} R_J$')
+        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', label='binned', lw=2)
+        model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2, label="transit Model")
+        ax[1].set_xlim([-0.5, .5])
+        ax[1].set_ylim([-.002, .002])
+
+        '''
+        Zoom folded transit
+        -------------------
+        '''
+        lc.fold(period, t0).scatter(ax=ax[2], c='k', label=f'folded at {period:.3f} days')
+        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[2], c='b', label='binned', lw=2)
+        model_lc.fold(period, t0).plot(ax=ax[2], c='r', lw=2, label="transit Model")
+        ax[2].set_xlim([-0.1, .1])
+        ax[2].set_ylim([-.002, .002])
+
+        ax[0].set_title(f'{self.ticid}', fontsize=14)
+
+        plt.show()
+
+    def _fit(self, x, y, yerr, period_prior=None, t0_prior=None, depth=None, **kwargs):
+        """A helper function to generate a PyMC3 model and optimize parameters.
+
+        Parameters
+        ----------
+        x : array-like
+            The time series in days
+        y : array-like
+            The light curve flux values
+        yerr : array-like
+            Errors on the flux values
+        """
+
+        # build_model should only take lc and system
+        # model = build_model(lc, system)
+
+        def build_model(x, y, yerr, period_prior, t0_prior, depth, minimum_period=3, maximum_period=30, r_star_prior=5.0, t_star_prior=5000, rho_star_prior=0.07, start=None):
+            """Build an exoplanet model for a dataset and set of planets
+
+            Paramters
+            ---------
+            x : array-like
+                The time series (in days); this should probably be centered
+            y : array-like
+                The relative fluxes (in parts per thousand)
+            yerr : array-like
+                The uncertainties on ``y``
+            period_prior : list
+                The literature values for periods of the planets (in days)
+            t0_prior : list
+                The literature values for phases of the planets in the same
+                coordinates as `x`
+            rprs_prior : list
+                The literature values for the ratio of planet radius to star
+                radius
+            start : dict
+                A dictionary of model parameters where the optimization
+                should be initialized
+
+            Returns:
+                A PyMC3 model specifying the probabilistic model for the light curve
+
+            """
+
+            model = BoxLeastSquares(x, y)
+            results = model.autopower(0.16, minimum_period=minimum_period, maximum_period=maximum_period)
+            if period_prior is None:
+                period_prior = results.period[np.argmax(results.power)]
+            if t0_prior is None:
+                t0_prior = results.transit_time[np.argmax(results.power)]
+            if depth is None:
+                depth = results.depth[np.argmax(results.power)]
+
+            period_prior = np.atleast_1d(period_prior)
+            t0_prior = np.atleast_1d(t0_prior)
+            # rprs_prior = np.atleast_1d(rprs_prior)
+
+            with pm.Model() as model:
+
+                # Set model variables
+                model.x = x
+                model.y = y
+                model.yerr = (yerr + np.zeros_like(x))
+
+                '''Stellar Parameters'''
+                # The baseline (out-of-transit) flux for the star in ppt
+                mean = pm.Normal("mean", mu=0.0, sd=10.0)
+
+                # Fixed stellar parameters (isochrones with JHK + parallax)
+                # m_star = pm.Normal("m_star", mu=1.7332613382990079, sd=0.07346535475676119)
+                r_star = pm.Normal("r_star", mu=r_star_prior, sd=2.0)
+                t_star = pm.Normal("t_star", mu=t_star_prior, sd=200)
+                rho_star = pm.Normal("rho_star", mu=rho_star_prior, sd=.1)
+
+                '''Orbital Parameters'''
+                # The time of a reference transit for each planet
+                t0 = pm.Normal("t0", mu=t0_prior, sd=5., shape=1)
+                period = pm.Uniform("period", testval=period_prior,
+                                    lower=period_prior+(-5.),
+                                    upper=period_prior+(5.),
+                                    shape=1)
+                # logP = pm.Normal("logP", mu=np.log(period_prior), sd=.2)
+                # Tracking planet parameters
+                # period = pm.Deterministic("period", tt.exp(logP))
+                b = pm.Uniform("b", testval=0.5, shape=1)
+
+                # Set up a Keplerian orbit for the planets
+                model.orbit = xo.orbits.KeplerianOrbit(
+                    period=period, t0=t0, b=b, r_star=r_star, rho_star=rho_star)# m_star=m_star)
+
+                # track additional orbital parameters
+                a = pm.Deterministic("a", model.orbit.a)
+                incl = pm.Deterministic("incl", model.orbit.incl)
+
+                '''Planet Parameters'''
+                # quadratic limb darkening paramters
+                u = xo.distributions.QuadLimbDark("u")
+
+                estimated_rpl = r_star*(depth)**(1/2)
+
+                # logr = pm.Normal("logr", testval=np.log(estimated_rpl), sd=1.)
+                r_pl = pm.Uniform("r_pl",
+                                  testval=estimated_rpl,
+                                  lower=0.,
+                                  upper=1.)
+
+                # r_pl = pm.Deterministic("r_pl", tt.exp(logr))
+                rprs = pm.Deterministic("rprs", r_pl / r_star)
+                teff = pm.Deterministic('teff', t_star * tt.sqrt(0.5*(1/a)))
+
+                # Compute the model light curve using starry
+                model.light_curves = xo.StarryLightCurve(u).get_light_curve(
+                                        orbit=model.orbit, r=r_pl, t=model.x)
+
+                model.light_curve = pm.math.sum(model.light_curves, axis=-1) + mean
+
+
+                pm.Normal("obs",
+                          mu=model.light_curve,
+                          sd=model.yerr,
+                          observed=model.y)
+
+                # Fit for the maximum a posteriori parameters, I've found that I can get
+                # a better solution by trying different combinations of parameters in turn
+                if start is None:
+                    start = model.test_point
+                map_soln = xo.optimize(start=start, vars=[period, t0])
+                map_soln = xo.optimize(start=map_soln, vars=[r_pl, mean])
+                map_soln = xo.optimize(start=map_soln, vars=[period, t0, mean])
+                map_soln = xo.optimize(start=map_soln, vars=[r_pl, mean])
+                map_soln = xo.optimize(start=map_soln)
+                model.map_soln = map_soln
+
+            return model
+
+        # build our initial model and store a static version of the output for plotting
+        model = build_model(x, y, yerr, period_prior, t0_prior, depth, **kwargs)
+        with model:
+            mean = model.map_soln["mean"]
+            static_lc = xo.utils.eval_in_model(model.light_curves, model.map_soln)
+
+        return model, static_lc

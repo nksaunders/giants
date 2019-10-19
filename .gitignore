@@ -3,6 +3,7 @@ __pycache__/
 giants/__pycache__/
 giants/__pycache__/*
 Notebooks/plots/
+Notebooks/
 *.py[cod]
 
 # C extensions
