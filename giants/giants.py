@@ -6,6 +6,7 @@ import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
 from astropy.stats import BoxLeastSquares
+from sklearn.decomposition import FastICA, PCA
 import astropy.stats as ass
 import lightkurve as lk
 from . import PACKAGEDIR
@@ -48,7 +49,7 @@ class Giant(object):
         """
         return self.cvz[self.brightcvz].ID.values
 
-    def from_lightkurve(self, ind=0, ticid=None, pld=True, cutout_size=5):
+    def from_lightkurve(self, ind=0, ticid=None, method=None, cutout_size=9):
         """Download cutouts around target for each sector using Lightkurve
         and create light curves.
         Requires either `ind` or `ticid`.
@@ -78,20 +79,20 @@ class Giant(object):
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
         # download the TargetPixelFileCollection for TESScut observations
         tpfc = sr.download_all(cutout_size=cutout_size)
-        rlc = self._photometry(tpfc[0], pld=False).normalize()
+        rlc = self._photometry(tpfc[0]).normalize()
         # track breakpoints between sectors
         self.breakpoints = [rlc.time[-1]]
         # iterate through TPFs and perform photometry on each of them
         for t in tpfc[1:]:
-            single_rlc = self._photometry(t, pld=False).normalize()
+            single_rlc = self._photometry(t).normalize()
             rlc = rlc.append(single_rlc)
             self.breakpoints.append(single_rlc.time[-1])
         rlc.label = 'Raw {ticid}'
         # do the same but with de-trending (if you want)
-        if pld:
-            clc = self._photometry(tpfc[0], pld=True).normalize()
+        if method is not None:
+            clc = self._photometry(tpfc[0], method=method).normalize()
             for t in tpfc[1:]:
-                single_clc = self._photometry(t, pld=True).normalize()
+                single_clc = self._photometry(t, method=method).normalize()
                 clc = clc.append(single_clc)
             clc.label = 'PLD {ticid}'
             rlc = rlc.remove_nans()
@@ -162,11 +163,28 @@ class Giant(object):
             sectors.append(int(re.search(r'\d+', str(desc)).group()))
         return sectors
 
-    def _photometry(self, tpf, pld=True):
+    def _photometry(self, tpf, method=None):
         """Helper function to perform photometry on a pixel level observation."""
-        if pld:
+        if method=='pld':
             pld = tpf.to_corrector('pld')
             lc = pld.correct(aperture_mask='threshold', pld_aperture_mask='all', use_gp=False)
+        elif method=='ica':
+            n_components = 20
+            flux = tpf.flux
+            pixmask = tpf.create_threshold_mask()
+
+            ica = FastICA(n_components=n_components, tol=0.1)
+            X = ica.fit_transform(flux[:,~pixmask].reshape(len(flux[:,~pixmask]), -1))
+
+            lc = tpf.to_lightcurve(aperture_mask=pixmask)
+
+            XTX = np.dot(X.T, X)
+            XTy = np.dot(X.T, lc.flux)
+            w = np.linalg.solve(XTX, XTy)
+            m = np.dot(X, w)
+
+            lc.flux = lc.flux - m
+            return lc
         else:
             lc = tpf.to_lightcurve(aperture_mask='threshold')
         return lc
@@ -191,7 +209,7 @@ class Giant(object):
         self.lc = lc
         return lc
 
-    def plot(self, ticid, lc_source='eleanor', outdir='plots', input_lc=None):
+    def plot(self, ticid, lc_source='eleanor', outdir='plots', input_lc=None, method=None):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
         Parameters
@@ -220,20 +238,21 @@ class Giant(object):
         plt.subplot2grid((4,4),(0,0),colspan=2)
 
         if lc_source == 'lightkurve':
-            lcc = self.from_lightkurve(ticid)
+            lcc = self.from_lightkurve(ticid=ticid, method=method)
             q = lcc[0].quality == 0
 
             plt.plot(lcc[0].time[q], lcc[0].flux[q], 'k', label="Raw")
             if len(lcc) > 1:
-                plt.plot(lcc[1].time[q], lcc[1].flux[q], 'r', label="Corr")
+                plt.plot(lcc[1].time[q], lcc[1].flux[q]+.2, 'r', label="Corr")
             for val in self.breakpoints:
                 plt.axvline(val, c='b', linestyle='dashed')
+            plt.legend(loc=0)
             lc = lcc[-1]
             time = lc.time[q]
             flux = lc.flux[q] # - 1
             # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
             flux_err = lc.flux_err[q]
-            lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
+            lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err).remove_nans()
 
         elif lc_source == 'eleanor':
             lcc = self.from_eleanor(ticid)
@@ -251,7 +270,6 @@ class Giant(object):
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
         elif lc_source == 'input':
-            lc = input_lc
             plt.plot(lc.time, lc.flux, label=lc.label)
             self.breakpoints = []
             time = lc.time
@@ -279,7 +297,7 @@ class Giant(object):
         self.lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)"""
 
         model = BoxLeastSquares(time, flux)
-        results = model.autopower(0.16, maximum_period=27.)
+        results = model.autopower(0.16, minimum_period=1., maximum_period=30.)
         period = results.period[np.argmax(results.power)]
         t0 = results.transit_time[np.argmax(results.power)]
         depth = results.depth[np.argmax(results.power)]
@@ -327,12 +345,12 @@ class Giant(object):
             plt.annotate(rf"Teff = {int(Teff)} K", xy=(.02, .06), xycoords='axes fraction')
             plt.annotate(rf"R = {R:.3f} $R_\odot$", xy=(.02, .04), xycoords='axes fraction')
             plt.annotate(rf"M = {M:.3f} $M_\odot$", xy=(.02, .02), xycoords='axes fraction')
-            plt.annotate(f'depth = {depth:.4f}', xy=(.35, .08), xycoords='axes fraction')
-            plt.annotate(f'depth_snr = {depth_snr:.4f}', xy=(.35, .06), xycoords='axes fraction')
-            plt.annotate(f'period = {period:.3f} days', xy=(.35, .04), xycoords='axes fraction')
-            plt.annotate(f't0 = {t0:.3f}', xy=(.35, .02), xycoords='axes fraction')
         except:
             pass
+        plt.annotate(f'depth = {depth:.4f}', xy=(.35, .08), xycoords='axes fraction')
+        plt.annotate(f'depth_snr = {depth_snr:.4f}', xy=(.35, .06), xycoords='axes fraction')
+        plt.annotate(f'period = {period:.3f} days', xy=(.35, .04), xycoords='axes fraction')
+        plt.annotate(f't0 = {t0:.3f}', xy=(.35, .02), xycoords='axes fraction')
 
         '''
         Plot BLS
@@ -496,7 +514,7 @@ class Giant(object):
         Plot folded transit
         -------------------
         '''
-        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=rf'$P={period:.3f} days, t0={t0:.3f}, R_p={r_pl:.3f} R_J$')
+        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=rf'$P={period:.3f}, t0={t0:.3f}, R_p={r_pl:.3f} R_J$')
         lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', label='binned', lw=2)
         model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2, label="transit Model")
         ax[1].set_xlim([-0.5, .5])
@@ -509,7 +527,7 @@ class Giant(object):
         lc.fold(period, t0).scatter(ax=ax[2], c='k', label=f'folded at {period:.3f} days')
         lc.fold(period, t0).bin(binsize=7).plot(ax=ax[2], c='b', label='binned', lw=2)
         model_lc.fold(period, t0).plot(ax=ax[2], c='r', lw=2, label="transit Model")
-        ax[2].set_xlim([-0.1, .1])
+        ax[2].set_xlim([-0.05, 0.05])
         ax[2].set_ylim([-.002, .002])
 
         ax[0].set_title(f'{self.ticid}', fontsize=14)
@@ -576,9 +594,9 @@ class Giant(object):
             with pm.Model() as model:
 
                 # Set model variables
-                model.x = x
-                model.y = y
-                model.yerr = (yerr + np.zeros_like(x))
+                model.x = np.asarray(x, dtype=np.float64)
+                model.y = np.asarray(y, dtype=np.float64)
+                model.yerr = np.asarray(yerr + np.zeros_like(x), dtype=np.float64)
 
                 '''Stellar Parameters'''
                 # The baseline (out-of-transit) flux for the star in ppt
