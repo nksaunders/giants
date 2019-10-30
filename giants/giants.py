@@ -16,6 +16,7 @@ import exoplanet as xo
 import starry
 import pymc3 as pm
 import theano.tensor as tt
+import celerite
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -74,8 +75,10 @@ class Giant(object):
             i = ind
             ticid = self.cvz[self.brightcvz].ID.values[i]
         # search TESScut for the desired target, read its sectors
-        sr = lk.search_tesscut('tic{}'.format(ticid))
+        sr = lk.search_tesscut(ticid)
         sectors = self._find_sectors(sr)
+        if isinstance(ticid, str):
+            ticid = int(re.search(r'\d+', str(ticid)).group())
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
         # download the TargetPixelFileCollection for TESScut observations
         tpfc = sr.download_all(cutout_size=cutout_size)
@@ -163,7 +166,7 @@ class Giant(object):
             sectors.append(int(re.search(r'\d+', str(desc)).group()))
         return sectors
 
-    def _photometry(self, tpf, method=None):
+    def _photometry(self, tpf, method=None, use_gp=False):
         """Helper function to perform photometry on a pixel level observation."""
         if method=='pld':
             pld = tpf.to_corrector('pld')
@@ -173,15 +176,37 @@ class Giant(object):
             flux = tpf.flux
             pixmask = tpf.create_threshold_mask()
 
-            ica = FastICA(n_components=n_components, tol=0.1)
-            X = ica.fit_transform(flux[:,~pixmask].reshape(len(flux[:,~pixmask]), -1))
+            # ica = FastICA(n_components=n_components, tol=0.1, max_iter=500)
+            # X = ica.fit_transform(flux[:,~pixmask].reshape(len(flux[:,~pixmask]), -1))
+            from fbpca import pca
+            X, _, _ = pca(flux[:,~pixmask], 20, n_iter=10)
+
 
             lc = tpf.to_lightcurve(aperture_mask=pixmask)
+            ivar = 1.0 / lc.flux_err**2 # inverse variance
 
+            # XTX = np.dot(X.T, X * ivar[:, None])
+            # XTy = np.dot(X.T, lc.flux * ivar)
             XTX = np.dot(X.T, X)
             XTy = np.dot(X.T, lc.flux)
             w = np.linalg.solve(XTX, XTy)
             m = np.dot(X, w)
+            '''
+            if use_gp:
+                y = lc.flux - m
+                amp = np.nanstd(y)
+                tau = 30
+                kernel = celerite.terms.Matern32Term(np.log(amp), np.log(tau))
+                gp = celerite.GP(kernel)
+                gp.compute(lc.time, lc.flux_err)
+
+                # compute the coefficients C on the basis vectors;
+                # the PLD design matrix will be dotted with C to solve for the noise model.
+                XTX = np.dot(X.T, gp.apply_inverse(X))
+                XTy = np.dot(X.T, gp.apply_inverse(lc.flux[:, None])[:, 0])
+                w = np.linalg.solve(XTX, XTy)
+                m = np.dot(X, w)
+            '''
 
             lc.flux = lc.flux - m
             return lc
@@ -243,6 +268,7 @@ class Giant(object):
 
             plt.plot(lcc[0].time[q], lcc[0].flux[q], 'k', label="Raw")
             if len(lcc) > 1:
+                q = lcc[1].quality == 0
                 plt.plot(lcc[1].time[q], lcc[1].flux[q]+.2, 'r', label="Corr")
             for val in self.breakpoints:
                 plt.axvline(val, c='b', linestyle='dashed')
@@ -281,21 +307,6 @@ class Giant(object):
         lc = self._clean_data(lc)
         time, flux, flux_err = lc.time, lc.flux, lc.flux_err
 
-        """    # mask first 12h after momentum dump
-        momdump = (time > 1339) * (time < 1341)
-        # also the burn in
-        burnin = np.zeros_like(time, dtype=bool)
-        burnin[:120] = True
-        # also 6 sigma outliers
-        _, outliers = lc.remove_outliers(sigma=6, return_mask=True)
-        mask = momdump | burnin | outliers
-        time = time[~mask]
-        flux = flux[~mask]
-        flux_err = flux_err[~mask]
-
-        # store masked values
-        self.lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)"""
-
         model = BoxLeastSquares(time, flux)
         results = model.autopower(0.16, minimum_period=1., maximum_period=30.)
         period = results.period[np.argmax(results.power)]
@@ -318,7 +329,8 @@ class Giant(object):
 
         # power = lc.to_periodogram().power
         freq = np.linspace(1./15, 1./.01, 100000)
-        power = ass.LombScargle(time, flux, flux_err).power(freq)
+        power = lc.to_periodogram('lombscargle', frequency=freq).power
+        #power = ass.LombScargle(time, flux, flux_err).power(freq)
         ps = 1./freq
 
         '''
@@ -381,18 +393,6 @@ class Giant(object):
         plt.ylabel('Flux')
         plt.xlim(-0.5, 0.5)
         plt.ylim(-0.0025, 0.0025)
-
-        # plt.plot([], [], label=f'depth = {depth:.4f}')
-        # plt.plot([], [], label=f'depth_snr = {depth_snr:.4f}')
-        # plt.plot([], [], label=f'period = {period:.3f} days')
-        # plt.plot([], [], label=f't0 = {t0:.3f}')
-        '''
-        plt.annotate(f'depth = {depth:.4f}', xy=(.05, .08), xycoords='axes fraction')
-        plt.annotate(f'depth_snr = {depth_snr:.4f}', xy=(.05, .06), xycoords='axes fraction')
-        plt.annotate(f'period = {period:.3f} days', xy=(.05, .04), xycoords='axes fraction')
-        plt.annotate(f't0 = {t0:.3f}', xy=(.05, .02), xycoords='axes fraction')
-        '''
-
         plt.legend(loc=0)
 
         fig = plt.gcf()
