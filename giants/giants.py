@@ -32,12 +32,7 @@ class Giant(object):
     def get_cvz_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         """Read in a csv of CVZ targets from a local file.
         """
-        # try:
-            # full list
         path = os.path.abspath(os.path.abspath(os.path.join(PACKAGEDIR, csv_path)))
-         #except:
-            # shorter list
-            # path = os.path.abspath(os.path.join(PACKAGEDIR, 'data', 'TICgiants_CVZ.csv'))
         return pd.read_csv(path, skiprows=0)
 
     def get_target_list(self):
