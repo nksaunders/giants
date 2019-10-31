@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
-from astropy.stats import BoxLeastSquares
+from astropy.timeseries import BoxLeastSquares
 from sklearn.decomposition import FastICA, PCA
 import astropy.stats as ass
 import lightkurve as lk
