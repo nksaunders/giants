@@ -1,10 +1,10 @@
 numpy
 astropy
-scipy
 matplotlib
+eleanor
+scipy
 astroquery
 pandas
 astropy
 lightkurve
 sklearn
-eleanor
