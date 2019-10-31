@@ -17,6 +17,8 @@ import astropy.stats as ass
 warnings.filterwarnings("ignore", module="astropy")
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+__all__ = ['Giant']
+
 class Giant(object):
     """An object to store and analyze time series data for giant stars.
     """

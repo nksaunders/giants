@@ -7,3 +7,4 @@ pandas
 astropy
 lightkurve
 sklearn
+eleanor
