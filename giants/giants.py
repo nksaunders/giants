@@ -535,8 +535,12 @@ class Giant(object):
             Errors on the flux values
         """
 
-        # build_model should only take lc and system
-        # model = build_model(lc, system)
+        try:
+            import pymc3 as pm
+            import theano.tensor as tt
+            import exoplanet as xo
+        except:
+            raise(ImportError)
 
         def build_model(x, y, yerr, period_prior, t0_prior, depth, minimum_period=3, maximum_period=30, r_star_prior=5.0, t_star_prior=5000, rho_star_prior=0.07, start=None):
             """Build an exoplanet model for a dataset and set of planets
@@ -565,10 +569,6 @@ class Giant(object):
                 A PyMC3 model specifying the probabilistic model for the light curve
 
             """
-            try:
-                import exoplanet as xo
-                import pymc3 as pm
-                import theano.tensor as tt
 
             model = BoxLeastSquares(x, y)
             results = model.autopower(0.16, minimum_period=minimum_period, maximum_period=maximum_period)
