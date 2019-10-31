@@ -2,7 +2,6 @@
 import os
 import sys
 from setuptools import setup
-from giants import *
 
 with open('requirements.txt') as f:
     install_requires = f.read().splitlines()
