@@ -12,11 +12,7 @@ import lightkurve as lk
 from . import PACKAGEDIR
 import warnings
 import astropy.stats as ass
-import exoplanet as xo
-import starry
-import pymc3 as pm
-import theano.tensor as tt
-import celerite
+
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -270,8 +266,7 @@ class Giant(object):
             plt.legend(loc=0)
             lc = lcc[-1]
             time = lc.time[q]
-            flux = lc.flux[q] # - 1
-            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux[q]
             flux_err = lc.flux_err[q]
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err).remove_nans()
 
@@ -285,8 +280,7 @@ class Giant(object):
 
             lc = lcc[1] # using corr_lc
             time = lc.time
-            flux = lc.flux # - 1
-            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux
             flux_err = np.ones_like(flux) * 1e-5
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
@@ -294,8 +288,7 @@ class Giant(object):
             plt.plot(lc.time, lc.flux, label=lc.label)
             self.breakpoints = []
             time = lc.time
-            flux = lc.flux # - 1
-            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux
             flux_err = np.ones_like(flux) * 1e-5
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
@@ -572,6 +565,10 @@ class Giant(object):
                 A PyMC3 model specifying the probabilistic model for the light curve
 
             """
+            try:
+                import exoplanet as xo
+                import pymc3 as pm
+                import theano.tensor as tt
 
             model = BoxLeastSquares(x, y)
             results = model.autopower(0.16, minimum_period=minimum_period, maximum_period=maximum_period)
