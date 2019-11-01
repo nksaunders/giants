@@ -6,6 +6,7 @@ import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
 from astropy.stats import BoxLeastSquares
+from astropy.stats import mad_std
 from sklearn.decomposition import FastICA, PCA
 import astropy.stats as ass
 import lightkurve as lk
@@ -221,7 +222,7 @@ class Giant(object):
         lc.flux = lc.flux[~mask]
         lc.flux_err = lc.flux_err[~mask]
         lc.flux = lc.flux - 1
-        lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 100)
+        lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 90) # <2-day (5muHz) filter
 
         # store cleaned lc
         self.lc = lc
