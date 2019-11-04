@@ -1,0 +1,10 @@
+numpy
+astropy
+matplotlib
+eleanor
+scipy
+astroquery
+pandas
+astropy
+lightkurve
+sklearn

@@ -5,6 +5,7 @@ import numpy as np
 import lightkurve as lk
 from astropy.coordinates import SkyCoord, Angle
 import matplotlib.pyplot as plt
+import starry
 
 def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=1.):
     """ """

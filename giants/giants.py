@@ -12,14 +12,12 @@ import lightkurve as lk
 from . import PACKAGEDIR
 import warnings
 import astropy.stats as ass
-import exoplanet as xo
-import starry
-import pymc3 as pm
-import theano.tensor as tt
-import celerite
+
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
 warnings.filterwarnings("ignore", category=FutureWarning)
+
+__all__ = ['Giant']
 
 class Giant(object):
     """An object to store and analyze time series data for giant stars.
@@ -32,12 +30,7 @@ class Giant(object):
     def get_cvz_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         """Read in a csv of CVZ targets from a local file.
         """
-        # try:
-            # full list
         path = os.path.abspath(os.path.abspath(os.path.join(PACKAGEDIR, csv_path)))
-         #except:
-            # shorter list
-            # path = os.path.abspath(os.path.join(PACKAGEDIR, 'data', 'TICgiants_CVZ.csv'))
         return pd.read_csv(path, skiprows=0)
 
     def get_target_list(self):
@@ -275,8 +268,7 @@ class Giant(object):
             plt.legend(loc=0)
             lc = lcc[-1]
             time = lc.time[q]
-            flux = lc.flux[q] # - 1
-            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux[q]
             flux_err = lc.flux_err[q]
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err).remove_nans()
 
@@ -290,8 +282,7 @@ class Giant(object):
 
             lc = lcc[1] # using corr_lc
             time = lc.time
-            flux = lc.flux # - 1
-            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux
             flux_err = np.ones_like(flux) * 1e-5
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
@@ -299,8 +290,7 @@ class Giant(object):
             plt.plot(lc.time, lc.flux, label=lc.label)
             self.breakpoints = []
             time = lc.time
-            flux = lc.flux # - 1
-            # flux = flux - scipy.ndimage.filters.gaussian_filter(flux, 100)
+            flux = lc.flux
             flux_err = np.ones_like(flux) * 1e-5
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
@@ -547,8 +537,12 @@ class Giant(object):
             Errors on the flux values
         """
 
-        # build_model should only take lc and system
-        # model = build_model(lc, system)
+        try:
+            import pymc3 as pm
+            import theano.tensor as tt
+            import exoplanet as xo
+        except:
+            raise(ImportError)
 
         def build_model(x, y, yerr, period_prior, t0_prior, depth, minimum_period=3, maximum_period=30, r_star_prior=5.0, t_star_prior=5000, rho_star_prior=0.07, start=None):
             """Build an exoplanet model for a dataset and set of planets
