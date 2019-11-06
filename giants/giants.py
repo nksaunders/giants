@@ -11,8 +11,10 @@ from sklearn.decomposition import FastICA, PCA
 import astropy.stats as ass
 import lightkurve as lk
 from . import PACKAGEDIR
+from . import lomb
 import warnings
 import astropy.stats as ass
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
@@ -214,7 +216,15 @@ class Giant(object):
         momdump = (lc.time > 1339) * (lc.time < 1341)
         # also the burn in
         burnin = np.zeros_like(lc.time, dtype=bool)
-        burnin[:40] = True
+        burnin[:30] = True
+        downlinks = [1339.6770629882812, 1368.6353149414062, 1421.239501953125, 1451.5728759765625, 1478.114501953125,
+                     1504.7199096679688, 1530.2824096679688, 1535.0115966796875, 1556.74072265625, 1582.7824096679688,
+                     1610.8031616210938, 1640.0531616210938, 1668.6415405273438, 1697.3673095703125, 1724.9667358398438,
+                     1751.6751098632812]
+        # mask around downlinks
+        for d in downlinks:
+            if d in lc.time:
+                burnin[d:d+15] = True
         # also 6 sigma outliers
         _, outliers = lc.remove_outliers(sigma=6, return_mask=True)
         mask = momdump | outliers | burnin
@@ -275,7 +285,7 @@ class Giant(object):
 
         elif lc_source == 'eleanor':
             lcc = self.from_eleanor(ticid)
-            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.1, 0, 0.1, -.2]):
+            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.05, 0, 0.05, -.1]):
                 plt.plot(lc.time, lc.flux + offset, label=label)
             for val in self.breakpoints:
                 plt.axvline(val, c='b', linestyle='dashed')
@@ -318,19 +328,33 @@ class Giant(object):
         plt.ylabel('Normalized Flux')
         plt.xlabel('Time')
 
-        # power = lc.to_periodogram().power
+        '''
         freq = np.linspace(1./15, 1./.01, 100000)
         power = lc.to_periodogram('lombscargle', frequency=freq).power
-        #power = ass.LombScargle(time, flux, flux_err).power(freq)
         ps = 1./freq
+        '''
+
+        osample=5.
+        nyq=283.
+
+        # calculate FFT
+        freqq, amp, nout, jmax, prob = lomb.fasper(time, flux, osample, 3.)
+        freqq = 1000. * freqq / 86.4
+        binn = freqq[1] - freqq[0]
+        fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * binn)
+        fts = scipy.ndimage.filters.gaussian_filter(fts, 4)
+
+        # calculate ACF
+        acf = np.correlate(fts, fts, 'same')
+        freq_acf = np.linspace(-freqq[-1],freqq[-1], len(freqq))
 
         '''
         Plot Periodogram
         ----------------
         '''
         plt.subplot2grid((4,4),(0,2),colspan=2,rowspan=4)
-        plt.loglog(freq/24/3600 * 1e6, power)
-        plt.loglog(freq/24/3600 * 1e6, scipy.ndimage.filters.gaussian_filter(power, 150), color='r', alpha=0.8, lw=2.5)
+        plt.loglog(freqq, fts)
+        plt.loglog(freqq, scipy.ndimage.filters.gaussian_filter(fts, 150), color='r', alpha=0.8, lw=2.5)
         plt.axvline(283,-1,1, ls='--', color='k')
         plt.xlabel("Frequency [uHz]")
         plt.ylabel("Power")
@@ -354,6 +378,13 @@ class Giant(object):
         plt.annotate(f'depth_snr = {depth_snr:.4f}', xy=(.35, .06), xycoords='axes fraction')
         plt.annotate(f'period = {period:.3f} days', xy=(.35, .04), xycoords='axes fraction')
         plt.annotate(f't0 = {t0:.3f}', xy=(.35, .02), xycoords='axes fraction')
+
+        # plot ACF inset
+        ax = plt.gca()
+        axins = inset_axes(ax, width=2.0, height=1.4)
+        axins.plot(freq_acf, acf)
+        axins.set_xlim(1,25)
+        axins.set_xlabel("ACF [uHz]")
 
         '''
         Plot BLS
@@ -390,7 +421,11 @@ class Giant(object):
         fig.suptitle(f'{ticid}', fontsize=14)
         fig.set_size_inches(12, 10)
 
+        # save figure, timeseries, and fft
         fig.savefig(outdir+'/'+str(ticid)+'_quicklook.png')
+        np.savetxt(outdir+'/'+str(ticid)+'.dat.ts', np.transpose([time, flux]), fmt='%.8f', delimiter=' ')
+        np.savetxt(outdir+'/'+str(ticid)+'.dat.ts.fft', np.transpose([freqq, fts]), fmt='%.8f', delimiter=' ')
+
         plt.show()
 
     def validate_transit(self, ticid=None, lc=None, rprs=0.02):
