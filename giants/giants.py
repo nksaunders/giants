@@ -15,6 +15,7 @@ from . import lomb
 import warnings
 import astropy.stats as ass
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import matplotlib.patches as patches
 
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
@@ -285,7 +286,7 @@ class Giant(object):
 
         elif lc_source == 'eleanor':
             lcc = self.from_eleanor(ticid)
-            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.05, 0, 0.05, -.1]):
+            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.02, 0, 0.02, -.04]):
                 plt.plot(lc.time, lc.flux + offset, label=label)
             for val in self.breakpoints:
                 plt.axvline(val, c='b', linestyle='dashed')
@@ -338,27 +339,33 @@ class Giant(object):
         nyq=283.
 
         # calculate FFT
-        freqq, amp, nout, jmax, prob = lomb.fasper(time, flux, osample, 3.)
-        freqq = 1000. * freqq / 86.4
-        binn = freqq[1] - freqq[0]
-        fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * binn)
-        fts = scipy.ndimage.filters.gaussian_filter(fts, 4)
+        freq, amp, nout, jmax, prob = lomb.fasper(time, flux, osample, 3.)
+        freq = 1000. * freq / 86.4
+        bin = freq[1] - freq[0]
+        fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
+
+        use = np.where(freq < nyq + 150)
+        freq = freq[use]
+        fts = fts[use]
 
         # calculate ACF
         acf = np.correlate(fts, fts, 'same')
-        freq_acf = np.linspace(-freqq[-1],freqq[-1], len(freqq))
+        freq_acf = np.linspace(-freq[-1], freq[-1], len(freq))
+
 
         '''
         Plot Periodogram
         ----------------
         '''
         plt.subplot2grid((4,4),(0,2),colspan=2,rowspan=4)
-        plt.loglog(freqq, fts)
-        plt.loglog(freqq, scipy.ndimage.filters.gaussian_filter(fts, 150), color='r', alpha=0.8, lw=2.5)
+        plt.loglog(freq, fts/np.max(fts))
+        plt.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='C1', lw=2.5)
+        plt.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='r', lw=2.5)
         plt.axvline(283,-1,1, ls='--', color='k')
         plt.xlabel("Frequency [uHz]")
         plt.ylabel("Power")
         plt.xlim(10, 400)
+        plt.ylim(1e-4, 1e0)
         try:
             # annotate with stellar params
             # won't work for TIC ID's not in the list
@@ -368,17 +375,18 @@ class Giant(object):
             Teff = self.cvz[self.cvz['ID'] == ticid]['Teff'].values[0]
             R = self.cvz[self.cvz['ID'] == ticid]['rad'].values[0]
             M = self.cvz[self.cvz['ID'] == ticid]['mass'].values[0]
-            plt.annotate(rf"G mag = {Gmag:.3f}", xy=(.02, .08), xycoords='axes fraction')
-            plt.annotate(rf"Teff = {int(Teff)} K", xy=(.02, .06), xycoords='axes fraction')
-            plt.annotate(rf"R = {R:.3f} $R_\odot$", xy=(.02, .04), xycoords='axes fraction')
-            plt.annotate(rf"M = {M:.3f} $M_\odot$", xy=(.02, .02), xycoords='axes fraction')
+            font = {'family':'monospace', 'size':10}
+            plt.text(10**1.04, 10**-3.50, rf"G mag = {Gmag:.3f}   ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+            plt.text(10**1.04, 10**-3.62, rf"Teff = {int(Teff)} K   ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+            plt.text(10**1.04, 10**-3.74, rf"R = {R:.3f} $R_\odot$    ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+            plt.text(10**1.04, 10**-3.86, rf"M = {M:.3f} $M_\odot$     ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
         except:
             pass
-        plt.annotate(f'depth = {depth:.4f}', xy=(.35, .08), xycoords='axes fraction')
-        plt.annotate(f'depth_snr = {depth_snr:.4f}', xy=(.35, .06), xycoords='axes fraction')
-        plt.annotate(f'period = {period:.3f} days', xy=(.35, .04), xycoords='axes fraction')
-        plt.annotate(f't0 = {t0:.3f}', xy=(.35, .02), xycoords='axes fraction')
-
+        plt.text(10**1.5, 10**-3.50, f'depth = {depth:.4f}     ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+        plt.text(10**1.5, 10**-3.62, f'depth_snr = {depth_snr:.4f} ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+        plt.text(10**1.5, 10**-3.74, f'period = {period:.3f} days', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+        plt.text(10**1.5, 10**-3.86, f't0 = {t0:.3f}         ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+        
         # plot ACF inset
         ax = plt.gca()
         axins = inset_axes(ax, width=2.0, height=1.4)
@@ -424,7 +432,7 @@ class Giant(object):
         # save figure, timeseries, and fft
         fig.savefig(outdir+'/'+str(ticid)+'_quicklook.png')
         np.savetxt(outdir+'/'+str(ticid)+'.dat.ts', np.transpose([time, flux]), fmt='%.8f', delimiter=' ')
-        np.savetxt(outdir+'/'+str(ticid)+'.dat.ts.fft', np.transpose([freqq, fts]), fmt='%.8f', delimiter=' ')
+        np.savetxt(outdir+'/'+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
 
         plt.show()
 
