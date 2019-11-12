@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
-from astropy.stats import BoxLeastSquares
-from astropy.stats import mad_std
+from astropy.stats import BoxLeastSquares, mad_std, LombScargle
 from sklearn.decomposition import FastICA, PCA
 import astropy.stats as ass
 import lightkurve as lk
@@ -15,7 +14,7 @@ from . import lomb
 import warnings
 import astropy.stats as ass
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-import matplotlib.patches as patches
+import astropy.units as u
 
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
@@ -125,6 +124,7 @@ class Giant(object):
         sectors = self._find_sectors(sr)
         if isinstance(ticid, str):
             ticid = int(re.search(r'\d+', str(ticid)).group())
+        self.ticid = ticid
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
         star = eleanor.Source(tic=ticid, sector=sectors[0], tc=True)
@@ -310,7 +310,7 @@ class Giant(object):
         time, flux, flux_err = lc.time, lc.flux, lc.flux_err
 
         model = BoxLeastSquares(time, flux)
-        results = model.autopower(0.16, minimum_period=1., maximum_period=30.)
+        results = model.autopower(0.16, minimum_period=1., maximum_period=21.)
         period = results.period[np.argmax(results.power)]
         t0 = results.transit_time[np.argmax(results.power)]
         depth = results.depth[np.argmax(results.power)]
@@ -347,6 +347,19 @@ class Giant(object):
         use = np.where(freq < nyq + 150)
         freq = freq[use]
         fts = fts[use]
+        """
+
+        oversampling = 5.
+        nyq = 283.
+
+        freq, amp = LombScargle(time, flux).autopower(method='fast', samples_per_peak=1, maximum_frequency=nyq + 100)
+
+        # unit conversions
+        freq = 1000. * freq / 86.4
+        bin = freq[1] - freq[0]
+        fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
+        """
+
 
         # calculate ACF
         acf = np.correlate(fts, fts, 'same')
@@ -366,6 +379,7 @@ class Giant(object):
         plt.ylabel("Power")
         plt.xlim(10, 400)
         plt.ylim(1e-4, 1e0)
+        font = {'family':'monospace', 'size':10}
         try:
             # annotate with stellar params
             # won't work for TIC ID's not in the list
@@ -375,7 +389,6 @@ class Giant(object):
             Teff = self.cvz[self.cvz['ID'] == ticid]['Teff'].values[0]
             R = self.cvz[self.cvz['ID'] == ticid]['rad'].values[0]
             M = self.cvz[self.cvz['ID'] == ticid]['mass'].values[0]
-            font = {'family':'monospace', 'size':10}
             plt.text(10**1.04, 10**-3.50, rf"G mag = {Gmag:.3f}   ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
             plt.text(10**1.04, 10**-3.62, rf"Teff = {int(Teff)} K   ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
             plt.text(10**1.04, 10**-3.74, rf"R = {R:.3f} $R_\odot$    ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
@@ -386,7 +399,7 @@ class Giant(object):
         plt.text(10**1.5, 10**-3.62, f'depth_snr = {depth_snr:.4f} ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
         plt.text(10**1.5, 10**-3.74, f'period = {period:.3f} days', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
         plt.text(10**1.5, 10**-3.86, f't0 = {t0:.3f}         ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
-        
+
         # plot ACF inset
         ax = plt.gca()
         axins = inset_axes(ax, width=2.0, height=1.4)
@@ -521,6 +534,14 @@ class Giant(object):
 
         return model, model_lc
 
+    def _estimate_duration(self, p, rs, rp, b, a):
+        """ """
+
+        X = np.sqrt((rs + (rp*u.jupiterRad).to(u.solRad).value)**2 - b**2) / a
+        td = (p / np.pi) * np.arcsin(X)
+
+        return td
+
     def plot_starry_model(self, lc=None, model=None, **kwargs):
         """ """
         if lc is None:
@@ -533,6 +554,15 @@ class Giant(object):
             period = model.map_soln['period'][0]
             t0 = model.map_soln['t0'][0]
             r_pl = model.map_soln['r_pl'] * 9.96
+            a = model.map_soln['a'][0]
+            b = model.map_soln['b'][0]
+
+        try:
+            r_star = self.cvz[self.cvz['ID'] == self.ticid]['rad'].values[0]
+        except:
+            r_star = 10.
+
+        dur = self._estimate_duration(period, r_star, r_pl, b, a)
 
         fig, ax = plt.subplots(3, 1, figsize=(12,14))
         '''
@@ -548,9 +578,9 @@ class Giant(object):
         Plot folded transit
         -------------------
         '''
-        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=rf'$P={period:.3f}, t0={t0:.3f}, R_p={r_pl:.3f} R_J$')
-        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', label='binned', lw=2)
-        model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2, label="transit Model")
+        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=rf'$P={period:.3f}, t0={t0:.3f}, R_p={r_pl:.3f} R_J, b={b:.3f}, \tau_T$={dur:.3f} days ({dur * 24:.3f} hrs)')
+        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', lw=2)
+        model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2)
         ax[1].set_xlim([-0.5, .5])
         ax[1].set_ylim([-.002, .002])
 
@@ -588,7 +618,7 @@ class Giant(object):
         except:
             raise(ImportError)
 
-        def build_model(x, y, yerr, period_prior, t0_prior, depth, minimum_period=3, maximum_period=30, r_star_prior=5.0, t_star_prior=5000, rho_star_prior=0.07, start=None):
+        def build_model(x, y, yerr, period_prior, t0_prior, depth, minimum_period=3, maximum_period=30, r_star_prior=5.0, t_star_prior=5000, start=None):
             """Build an exoplanet model for a dataset and set of planets
 
             Paramters
@@ -640,11 +670,21 @@ class Giant(object):
                 # The baseline (out-of-transit) flux for the star in ppt
                 mean = pm.Normal("mean", mu=0.0, sd=10.0)
 
-                # Fixed stellar parameters (isochrones with JHK + parallax)
-                # m_star = pm.Normal("m_star", mu=1.7332613382990079, sd=0.07346535475676119)
-                r_star = pm.Normal("r_star", mu=r_star_prior, sd=2.0)
+                try:
+                    r_star_mu = self.cvz[self.cvz['ID'] == self.ticid]['rad'].values[0]
+                except:
+                    r_star_mu = r_star_prior
+                try:
+                    m_star_mu = self.cvz[self.cvz['ID'] == self.ticid]['mass'].values[0]
+                except:
+                    m_star_mu = 1.2
+                if np.isnan(m_star_mu):
+                    m_star_mu = 1.2
+                r_star = pm.Normal("r_star", mu=r_star_mu, sd=1.)
+                m_star = pm.Normal("m_star", mu=m_star_mu, sd=1.)
                 t_star = pm.Normal("t_star", mu=t_star_prior, sd=200)
-                rho_star = pm.Normal("rho_star", mu=rho_star_prior, sd=.1)
+                rho_star_mu = ((m_star_mu*u.solMass).to(u.g) / ((4/3) * np.pi * (r_star_mu*u.solRad).to(u.cm)**3)).value
+                rho_star = pm.Normal("rho_star", mu=rho_star_mu, sd=.1)
 
                 '''Orbital Parameters'''
                 # The time of a reference transit for each planet
@@ -653,14 +693,12 @@ class Giant(object):
                                     lower=period_prior+(-5.),
                                     upper=period_prior+(5.),
                                     shape=1)
-                # logP = pm.Normal("logP", mu=np.log(period_prior), sd=.2)
-                # Tracking planet parameters
-                # period = pm.Deterministic("period", tt.exp(logP))
+
                 b = pm.Uniform("b", testval=0.5, shape=1)
 
                 # Set up a Keplerian orbit for the planets
                 model.orbit = xo.orbits.KeplerianOrbit(
-                    period=period, t0=t0, b=b, r_star=r_star, rho_star=rho_star)# m_star=m_star)
+                    period=period, t0=t0, b=b, r_star=r_star, m_star=m_star)#rho_star=rho_star)
 
                 # track additional orbital parameters
                 a = pm.Deterministic("a", model.orbit.a)
@@ -668,7 +706,7 @@ class Giant(object):
 
                 '''Planet Parameters'''
                 # quadratic limb darkening paramters
-                u = xo.distributions.QuadLimbDark("u")
+                u_ld = xo.distributions.QuadLimbDark("u_ld")
 
                 estimated_rpl = r_star*(depth)**(1/2)
 
@@ -683,7 +721,7 @@ class Giant(object):
                 teff = pm.Deterministic('teff', t_star * tt.sqrt(0.5*(1/a)))
 
                 # Compute the model light curve using starry
-                model.light_curves = xo.StarryLightCurve(u).get_light_curve(
+                model.light_curves = xo.StarryLightCurve(u_ld).get_light_curve(
                                         orbit=model.orbit, r=r_pl, t=model.x)
 
                 model.light_curve = pm.math.sum(model.light_curves, axis=-1) + mean
