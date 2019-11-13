@@ -15,6 +15,7 @@ import warnings
 import astropy.stats as ass
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
+import ktransit
 
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
@@ -101,7 +102,7 @@ class Giant(object):
             rlc = rlc.remove_nans()
             return lk.LightCurveCollection([rlc])
 
-    def from_eleanor(self, ticid):
+    def from_eleanor(self, ticid, save_postcard=False):
         """Download light curves from Eleanor for desired target. Eleanor light
         curves include:
         - raw : raw flux light curve
@@ -128,7 +129,7 @@ class Giant(object):
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
         star = eleanor.Source(tic=ticid, sector=sectors[0], tc=True)
-        data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
+        data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=True, do_pca=True, try_load=True, save_postcard=save_postcard)
         q = data.quality == 0
         # create raw flux light curve
         raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q],label='raw', time_format='btjd').remove_nans().normalize()
@@ -239,7 +240,7 @@ class Giant(object):
         self.lc = lc
         return lc
 
-    def plot(self, ticid, lc_source='eleanor', outdir='plots', input_lc=None, method=None):
+    def plot(self, ticid, lc_source='eleanor', outdir='plots', input_lc=None, method=None, **kwargs):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
         Parameters
@@ -285,7 +286,7 @@ class Giant(object):
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err).remove_nans()
 
         elif lc_source == 'eleanor':
-            lcc = self.from_eleanor(ticid)
+            lcc = self.from_eleanor(ticid, **kwargs)
             for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.02, 0, 0.02, -.04]):
                 plt.plot(lc.time, lc.flux + offset, label=label)
             for val in self.breakpoints:
@@ -683,8 +684,8 @@ class Giant(object):
                 r_star = pm.Normal("r_star", mu=r_star_mu, sd=1.)
                 m_star = pm.Normal("m_star", mu=m_star_mu, sd=1.)
                 t_star = pm.Normal("t_star", mu=t_star_prior, sd=200)
-                rho_star_mu = ((m_star_mu*u.solMass).to(u.g) / ((4/3) * np.pi * (r_star_mu*u.solRad).to(u.cm)**3)).value
-                rho_star = pm.Normal("rho_star", mu=rho_star_mu, sd=.1)
+                rho_star_mu = ((m_star_mu*u.solMass).to(u.g) / ((4/3) * np.pi * ((r_star_mu*u.solRad).to(u.cm))**3)).value
+                rho_star = pm.Normal("rho_star", mu=rho_star_mu, sd=.25)
 
                 '''Orbital Parameters'''
                 # The time of a reference transit for each planet
@@ -752,3 +753,48 @@ class Giant(object):
             static_lc = xo.utils.eval_in_model(model.light_curves, model.map_soln)
 
         return model, static_lc
+
+    def validate_ktransit(self, ticid=None, lc=None, rprs=0.02):
+        """ """
+        from ktransit import FitTransit
+        fitT = FitTransit()
+
+        if ticid is not None:
+            lc = self.from_eleanor(ticid)[1]
+            lc = self._clean_data(lc)
+        elif lc is None:
+            lc = self.lc
+
+        # lc.flux = lc.flux / np.mean(lc.flux)
+        model = BoxLeastSquares(lc.time, lc.flux)
+        results = model.autopower(0.16)
+        #periods = np.linspace(3,15,400)
+        #results = model.power(periods, 0.16)
+        period = results.period[np.argmax(results.power)]
+        t0 = results.transit_time[np.argmax(results.power)]
+        if rprs is None:
+            depth = results.depth[np.argmax(results.power)]
+            rprs = depth ** 2
+
+
+        fitT.add_guess_star(rho=0.022, zpt=0, ld1=0.6505,ld2=0.1041) #come up with better way to estimate this using AS
+        fitT.add_guess_planet(T0=t0, period=period, impact=0.5, rprs=rprs)
+
+        ferr=np.ones_like(lc.time) * 0.00001
+        fitT.add_data(time=lc.time,flux=lc.flux,ferr=ferr)#*1e-3)
+
+        vary_star = ['zpt']      # free stellar parameters
+        vary_planet = (['period', 'impact',       # free planetary parameters
+            'T0', #'esinw', 'ecosw',
+            'rprs']) #'impact',               # free planet parameters are the same for every planet you model
+
+        fitT.free_parameters(vary_star, vary_planet)
+        fitT.do_fit()                   # run the fitting
+
+        fitT.print_results()            # print some results
+        res=fitT.fitresultplanets
+        res2=fitT.fitresultstellar
+
+        fig = ktransit.plot_results(lc.time,lc.flux,fitT.transitmodel)
+
+        fig.show()
