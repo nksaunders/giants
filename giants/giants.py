@@ -311,7 +311,7 @@ class Giant(object):
         time, flux, flux_err = lc.time, lc.flux, lc.flux_err
 
         model = BoxLeastSquares(time, flux)
-        results = model.autopower(0.16, minimum_period=1., maximum_period=21.)
+        results = model.autopower(0.16, minimum_period=2., maximum_period=21.)
         period = results.period[np.argmax(results.power)]
         t0 = results.transit_time[np.argmax(results.power)]
         depth = results.depth[np.argmax(results.power)]
@@ -330,12 +330,6 @@ class Giant(object):
         plt.ylabel('Normalized Flux')
         plt.xlabel('Time')
 
-        '''
-        freq = np.linspace(1./15, 1./.01, 100000)
-        power = lc.to_periodogram('lombscargle', frequency=freq).power
-        ps = 1./freq
-        '''
-
         osample=5.
         nyq=283.
 
@@ -348,24 +342,13 @@ class Giant(object):
         use = np.where(freq < nyq + 150)
         freq = freq[use]
         fts = fts[use]
-        """
-
-        oversampling = 5.
-        nyq = 283.
-
-        freq, amp = LombScargle(time, flux).autopower(method='fast', samples_per_peak=1, maximum_frequency=nyq + 100)
-
-        # unit conversions
-        freq = 1000. * freq / 86.4
-        bin = freq[1] - freq[0]
-        fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
-        """
-
 
         # calculate ACF
         acf = np.correlate(fts, fts, 'same')
         freq_acf = np.linspace(-freq[-1], freq[-1], len(freq))
 
+        fitT = self.build_ktransit_model(lc=lc)
+        dur = self._individual_ktransit_dur(fitT.time, fitT.transitmodel)
 
         '''
         Plot Periodogram
@@ -432,7 +415,7 @@ class Giant(object):
         foldfluxes = flux[foldtimesort]
         plt.subplot2grid((4,4), (3,0),colspan=2)
         plt.scatter(foldedtimes, flux, s=2)
-        plt.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='r', label=f'P={period:.2f} days')
+        plt.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='r', label=f'P={period:.2f} days, dur={dur:.2f} hrs')
         plt.xlabel('Phase')
         plt.ylabel('Flux')
         plt.xlim(-0.5, 0.5)
@@ -754,8 +737,7 @@ class Giant(object):
 
         return model, static_lc
 
-    def validate_ktransit(self, ticid=None, lc=None, rprs=0.02):
-        """ """
+    def build_ktransit_model(self, ticid=None, lc=None, rprs=0.02):
         from ktransit import FitTransit
         fitT = FitTransit()
 
@@ -765,7 +747,6 @@ class Giant(object):
         elif lc is None:
             lc = self.lc
 
-        # lc.flux = lc.flux / np.mean(lc.flux)
         model = BoxLeastSquares(lc.time, lc.flux)
         results = model.autopower(0.16)
         #periods = np.linspace(3,15,400)
@@ -780,7 +761,7 @@ class Giant(object):
         fitT.add_guess_star(rho=0.022, zpt=0, ld1=0.6505,ld2=0.1041) #come up with better way to estimate this using AS
         fitT.add_guess_planet(T0=t0, period=period, impact=0.5, rprs=rprs)
 
-        ferr=np.ones_like(lc.time) * 0.00001
+        ferr = np.ones_like(lc.time) * 0.00001
         fitT.add_data(time=lc.time,flux=lc.flux,ferr=ferr)#*1e-3)
 
         vary_star = ['zpt']      # free stellar parameters
@@ -791,9 +772,24 @@ class Giant(object):
         fitT.free_parameters(vary_star, vary_planet)
         fitT.do_fit()                   # run the fitting
 
+        return fitT
+
+    def _individual_ktransit_dur(self, time, data):
+        """ """
+        inds = np.where(data < np.median(data))[0]
+        first_transit = np.split(inds, np.where(np.diff(inds) != 1)[0] + 1)[0]
+
+        dur = (time[first_transit[-1]] - time[first_transit[0]]) * 24.0
+
+        return dur
+
+    def validate_ktransit(self, ticid=None, lc=None, rprs=0.02):
+        """ """
+        fitT = self.build_ktransit_model(ticid=ticid, lc=lc, rprs=rprs)
+
         fitT.print_results()            # print some results
-        res=fitT.fitresultplanets
-        res2=fitT.fitresultstellar
+        res = fitT.fitresultplanets
+        res2 = fitT.fitresultstellar
 
         fig = ktransit.plot_results(lc.time,lc.flux,fitT.transitmodel)
 
