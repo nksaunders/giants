@@ -1,14 +1,13 @@
-import starry
 from astropy import units as u
 from astropy.constants import G
 import numpy as np
 import lightkurve as lk
 from astropy.coordinates import SkyCoord, Angle
 import matplotlib.pyplot as plt
-import starry
 
 def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=1.):
     """ """
+    import starry
     # instantiate a starry primary object (star)
     star = starry.kepler.Primary()
     # calculate separation

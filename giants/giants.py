@@ -6,7 +6,6 @@ import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
 from astropy.stats import BoxLeastSquares, mad_std, LombScargle
-from sklearn.decomposition import FastICA, PCA
 import astropy.stats as ass
 import lightkurve as lk
 from . import PACKAGEDIR
@@ -27,11 +26,9 @@ class Giant(object):
     """An object to store and analyze time series data for giant stars.
     """
     def __init__(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
-        self.cvz = self.get_cvz_targets(csv_path)
-        self.brightcvz = np.ones(len(self.cvz), dtype=bool) # self.cvz.GAIAmag < 12.5
-        # print(f'Using the brightest {len(self.cvz[self.brightcvz])} targets.')
+        self.target_list = self.get_targets(csv_path)
 
-    def get_cvz_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
+    def get_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         """Read in a csv of CVZ targets from a local file.
         """
         path = os.path.abspath(os.path.abspath(os.path.join(PACKAGEDIR, csv_path)))
@@ -45,7 +42,7 @@ class Giant(object):
         IDs : list
             TIC IDs for bright targets in list.
         """
-        return self.cvz[self.brightcvz].ID.values
+        return self.target_list.ID.values
 
     def from_lightkurve(self, ind=0, ticid=None, method=None, cutout_size=9):
         """Download cutouts around target for each sector using Lightkurve
@@ -70,7 +67,7 @@ class Giant(object):
         """
         if ticid == None:
             i = ind
-            ticid = self.cvz[self.brightcvz].ID.values[i]
+            ticid = self.target_list.ID.values[i]
         # search TESScut for the desired target, read its sectors
         sr = lk.search_tesscut(ticid)
         sectors = self._find_sectors(sr)
@@ -169,45 +166,6 @@ class Giant(object):
         if method=='pld':
             pld = tpf.to_corrector('pld')
             lc = pld.correct(aperture_mask='threshold', pld_aperture_mask='all', use_gp=False)
-        elif method=='ica':
-            n_components = 20
-            flux = tpf.flux
-            pixmask = tpf.create_threshold_mask()
-
-            # ica = FastICA(n_components=n_components, tol=0.1, max_iter=500)
-            # X = ica.fit_transform(flux[:,~pixmask].reshape(len(flux[:,~pixmask]), -1))
-            from fbpca import pca
-            X, _, _ = pca(flux[:,~pixmask], 20, n_iter=10)
-
-
-            lc = tpf.to_lightcurve(aperture_mask=pixmask)
-            ivar = 1.0 / lc.flux_err**2 # inverse variance
-
-            # XTX = np.dot(X.T, X * ivar[:, None])
-            # XTy = np.dot(X.T, lc.flux * ivar)
-            XTX = np.dot(X.T, X)
-            XTy = np.dot(X.T, lc.flux)
-            w = np.linalg.solve(XTX, XTy)
-            m = np.dot(X, w)
-            '''
-            if use_gp:
-                y = lc.flux - m
-                amp = np.nanstd(y)
-                tau = 30
-                kernel = celerite.terms.Matern32Term(np.log(amp), np.log(tau))
-                gp = celerite.GP(kernel)
-                gp.compute(lc.time, lc.flux_err)
-
-                # compute the coefficients C on the basis vectors;
-                # the PLD design matrix will be dotted with C to solve for the noise model.
-                XTX = np.dot(X.T, gp.apply_inverse(X))
-                XTy = np.dot(X.T, gp.apply_inverse(lc.flux[:, None])[:, 0])
-                w = np.linalg.solve(XTX, XTy)
-                m = np.dot(X, w)
-            '''
-
-            lc.flux = lc.flux - m
-            return lc
         else:
             lc = tpf.to_lightcurve(aperture_mask='threshold')
         return lc
@@ -287,7 +245,7 @@ class Giant(object):
 
         elif lc_source == 'eleanor':
             lcc = self.from_eleanor(ticid, **kwargs)
-            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.02, 0, 0.02, -.04]):
+            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.01, 0, 0.01, -.02]):
                 plt.plot(lc.time, lc.flux + offset, label=label)
             for val in self.breakpoints:
                 plt.axvline(val, c='b', linestyle='dashed')
@@ -347,7 +305,7 @@ class Giant(object):
         acf = np.correlate(fts, fts, 'same')
         freq_acf = np.linspace(-freq[-1], freq[-1], len(freq))
 
-        fitT = self.build_ktransit_model(lc=lc)
+        fitT = self.build_ktransit_model(lc=lc, vary_transit=False)
         dur = self._individual_ktransit_dur(fitT.time, fitT.transitmodel)
 
         '''
@@ -369,10 +327,10 @@ class Giant(object):
             # won't work for TIC ID's not in the list
             if isinstance(ticid, str):
                 ticid = int(re.search(r'\d+', str(ticid)).group())
-            Gmag = self.cvz[self.cvz['ID'] == ticid]['GAIAmag'].values[0]
-            Teff = self.cvz[self.cvz['ID'] == ticid]['Teff'].values[0]
-            R = self.cvz[self.cvz['ID'] == ticid]['rad'].values[0]
-            M = self.cvz[self.cvz['ID'] == ticid]['mass'].values[0]
+            Gmag = self.target_list[self.target_list['ID'] == ticid]['GAIAmag'].values[0]
+            Teff = self.target_list[self.target_list['ID'] == ticid]['Teff'].values[0]
+            R = self.target_list[self.target_list['ID'] == ticid]['rad'].values[0]
+            M = self.target_list[self.target_list['ID'] == ticid]['mass'].values[0]
             plt.text(10**1.04, 10**-3.50, rf"G mag = {Gmag:.3f}   ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
             plt.text(10**1.04, 10**-3.62, rf"Teff = {int(Teff)} K   ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
             plt.text(10**1.04, 10**-3.74, rf"R = {R:.3f} $R_\odot$    ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
@@ -423,13 +381,16 @@ class Giant(object):
         plt.legend(loc=0)
 
         fig = plt.gcf()
+        fig.patch.set_facecolor('white')
         fig.suptitle(f'{ticid}', fontsize=14)
         fig.set_size_inches(12, 10)
 
-        # save figure, timeseries, and fft
+        # save figure, timeseries, fft, and basic stats
         fig.savefig(outdir+'/'+str(ticid)+'_quicklook.png')
-        np.savetxt(outdir+'/'+str(ticid)+'.dat.ts', np.transpose([time, flux]), fmt='%.8f', delimiter=' ')
-        np.savetxt(outdir+'/'+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
+        np.savetxt(outdir+'/timeseries/'+str(ticid)+'.dat.ts', np.transpose([time, flux]), fmt='%.8f', delimiter=' ')
+        np.savetxt(outdir+'/fft/'+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
+        with open("transit_stats.txt", "a+") as file:
+            file.write(f"{ticid} {depth} {depth_snr} {period} {t0} {dur}\n")
 
         plt.show()
 
@@ -456,6 +417,7 @@ class Giant(object):
         model_lc = lk.LightCurve(time=lc.time, flux=model_flux)
 
         fig, ax = plt.subplots(3, 1, figsize=(12,14))
+        fig.patch.set_facecolor('white')
         '''
         Plot unfolded transit
         ---------------------
@@ -542,18 +504,20 @@ class Giant(object):
             b = model.map_soln['b'][0]
 
         try:
-            r_star = self.cvz[self.cvz['ID'] == self.ticid]['rad'].values[0]
+            r_star = self.target_list[self.target_list['ID'] == self.ticid]['rad'].values[0]
         except:
             r_star = 10.
 
         dur = self._estimate_duration(period, r_star, r_pl, b, a)
 
         fig, ax = plt.subplots(3, 1, figsize=(12,14))
+        fig.patch.set_facecolor('white')
         '''
         Plot unfolded transit
         ---------------------
         '''
         lc.scatter(ax=ax[0], c='k', label='Corrected Flux')
+        lc.bin(binsize=7).plot(ax=ax[0], c='b', lw=1.5, alpha=.75, label='binned')
         model_lc.plot(ax=ax[0], c='r', lw=2, label='Transit Model')
         ax[0].set_ylim([-.002, .002])
         ax[0].set_xlim([lc.time[0], lc.time[-1]])
@@ -563,7 +527,7 @@ class Giant(object):
         -------------------
         '''
         lc.fold(period, t0).scatter(ax=ax[1], c='k', label=rf'$P={period:.3f}, t0={t0:.3f}, R_p={r_pl:.3f} R_J, b={b:.3f}, \tau_T$={dur:.3f} days ({dur * 24:.3f} hrs)')
-        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', lw=2)
+        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', alpha=.75, lw=2)
         model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2)
         ax[1].set_xlim([-0.5, .5])
         ax[1].set_ylim([-.002, .002])
@@ -573,10 +537,10 @@ class Giant(object):
         -------------------
         '''
         lc.fold(period, t0).scatter(ax=ax[2], c='k', label=f'folded at {period:.3f} days')
-        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[2], c='b', label='binned', lw=2)
+        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[2], c='b', alpha=.75, lw=2)
         model_lc.fold(period, t0).plot(ax=ax[2], c='r', lw=2, label="transit Model")
-        ax[2].set_xlim([-0.05, 0.05])
-        ax[2].set_ylim([-.002, .002])
+        ax[2].set_xlim([-0.1, 0.1])
+        ax[2].set_ylim([-.0015, .0015])
 
         ax[0].set_title(f'{self.ticid}', fontsize=14)
 
@@ -602,7 +566,7 @@ class Giant(object):
         except:
             raise(ImportError)
 
-        def build_model(x, y, yerr, period_prior, t0_prior, depth, minimum_period=3, maximum_period=30, r_star_prior=5.0, t_star_prior=5000, start=None):
+        def build_model(x, y, yerr, period_prior, t0_prior, depth, minimum_period=2, maximum_period=30, r_star_prior=5.0, t_star_prior=5000, m_star_prior=None, start=None):
             """Build an exoplanet model for a dataset and set of planets
 
             Paramters
@@ -655,15 +619,18 @@ class Giant(object):
                 mean = pm.Normal("mean", mu=0.0, sd=10.0)
 
                 try:
-                    r_star_mu = self.cvz[self.cvz['ID'] == self.ticid]['rad'].values[0]
+                    r_star_mu = self.target_list[self.target_list['ID'] == self.ticid]['rad'].values[0]
                 except:
                     r_star_mu = r_star_prior
-                try:
-                    m_star_mu = self.cvz[self.cvz['ID'] == self.ticid]['mass'].values[0]
-                except:
-                    m_star_mu = 1.2
-                if np.isnan(m_star_mu):
-                    m_star_mu = 1.2
+                if m_star_prior is None:
+                    try:
+                        m_star_mu = self.target_list[self.target_list['ID'] == self.ticid]['mass'].values[0]
+                    except:
+                        m_star_mu = 1.2
+                    if np.isnan(m_star_mu):
+                        m_star_mu = 1.2
+                else:
+                    m_star_mu = m_star_prior
                 r_star = pm.Normal("r_star", mu=r_star_mu, sd=1.)
                 m_star = pm.Normal("m_star", mu=m_star_mu, sd=1.)
                 t_star = pm.Normal("t_star", mu=t_star_prior, sd=200)
@@ -672,10 +639,10 @@ class Giant(object):
 
                 '''Orbital Parameters'''
                 # The time of a reference transit for each planet
-                t0 = pm.Normal("t0", mu=t0_prior, sd=5., shape=1)
+                t0 = pm.Normal("t0", mu=t0_prior, sd=2., shape=1)
                 period = pm.Uniform("period", testval=period_prior,
-                                    lower=period_prior+(-5.),
-                                    upper=period_prior+(5.),
+                                    lower=minimum_period,
+                                    upper=maximum_period,
                                     shape=1)
 
                 b = pm.Uniform("b", testval=0.5, shape=1)
@@ -737,7 +704,7 @@ class Giant(object):
 
         return model, static_lc
 
-    def build_ktransit_model(self, ticid=None, lc=None, rprs=0.02):
+    def build_ktransit_model(self, ticid=None, lc=None, rprs=0.02, vary_transit=True):
         from ktransit import FitTransit
         fitT = FitTransit()
 
@@ -748,15 +715,12 @@ class Giant(object):
             lc = self.lc
 
         model = BoxLeastSquares(lc.time, lc.flux)
-        results = model.autopower(0.16)
-        #periods = np.linspace(3,15,400)
-        #results = model.power(periods, 0.16)
+        results = model.autopower(0.16, minimum_period=2., maximum_period=21.)
         period = results.period[np.argmax(results.power)]
         t0 = results.transit_time[np.argmax(results.power)]
         if rprs is None:
             depth = results.depth[np.argmax(results.power)]
             rprs = depth ** 2
-
 
         fitT.add_guess_star(rho=0.022, zpt=0, ld1=0.6505,ld2=0.1041) #come up with better way to estimate this using AS
         fitT.add_guess_planet(T0=t0, period=period, impact=0.5, rprs=rprs)
@@ -765,9 +729,12 @@ class Giant(object):
         fitT.add_data(time=lc.time,flux=lc.flux,ferr=ferr)#*1e-3)
 
         vary_star = ['zpt']      # free stellar parameters
-        vary_planet = (['period', 'impact',       # free planetary parameters
-            'T0', #'esinw', 'ecosw',
-            'rprs']) #'impact',               # free planet parameters are the same for every planet you model
+        if vary_transit:
+            vary_planet = (['period', 'impact',       # free planetary parameters
+                'T0', #'esinw', 'ecosw',
+                'rprs']) #'impact',               # free planet parameters are the same for every planet you model
+        else:
+            vary_planet = (['rprs'])
 
         fitT.free_parameters(vary_star, vary_planet)
         fitT.do_fit()                   # run the fitting
@@ -785,6 +752,12 @@ class Giant(object):
 
     def validate_ktransit(self, ticid=None, lc=None, rprs=0.02):
         """ """
+        if ticid is not None:
+            lc = self.from_eleanor(ticid)[1]
+            lc = self._clean_data(lc)
+        elif lc is None:
+            lc = self.lc
+
         fitT = self.build_ktransit_model(ticid=ticid, lc=lc, rprs=rprs)
 
         fitT.print_results()            # print some results
