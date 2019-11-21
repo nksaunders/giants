@@ -198,7 +198,7 @@ class Giant(object):
         self.lc = lc
         return lc
 
-    def plot(self, ticid, lc_source='eleanor', outdir='plots', input_lc=None, method=None, **kwargs):
+    def plot(self, ticid, lc_source='eleanor', outdir='outputs', input_lc=None, method=None, **kwargs):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
         Parameters
