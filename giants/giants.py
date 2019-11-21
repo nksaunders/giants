@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from astropy.stats import BoxLeastSquares, mad_std, LombScargle
 import astropy.stats as ass
 import lightkurve as lk
-from . import lomb
+import lomb
 import warnings
 import astropy.stats as ass
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
