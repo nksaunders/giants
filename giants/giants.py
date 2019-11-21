@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from astropy.stats import BoxLeastSquares, mad_std, LombScargle
 import astropy.stats as ass
 import lightkurve as lk
-from . import PACKAGEDIR
 from . import lomb
 import warnings
 import astropy.stats as ass
@@ -31,6 +30,7 @@ class Giant(object):
     def get_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         """Read in a csv of CVZ targets from a local file.
         """
+        PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
         path = os.path.abspath(os.path.abspath(os.path.join(PACKAGEDIR, csv_path)))
         return pd.read_csv(path, skiprows=0)
 
@@ -321,7 +321,13 @@ class Giant(object):
         plt.ylabel("Power")
         plt.xlim(10, 400)
         plt.ylim(1e-4, 1e0)
+
+        # annotate with transit info
         font = {'family':'monospace', 'size':10}
+        plt.text(10**1.04, 10**-3.50, f'depth = {depth:.4f}        ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+        plt.text(10**1.04, 10**-3.62, f'depth_snr = {depth_snr:.4f}    ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+        plt.text(10**1.04, 10**-3.74, f'period = {period:.3f}    days', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+        plt.text(10**1.04, 10**-3.86, f't0 = {t0:.3f}            ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
         try:
             # annotate with stellar params
             # won't work for TIC ID's not in the list
@@ -331,16 +337,12 @@ class Giant(object):
             Teff = self.target_list[self.target_list['ID'] == ticid]['Teff'].values[0]
             R = self.target_list[self.target_list['ID'] == ticid]['rad'].values[0]
             M = self.target_list[self.target_list['ID'] == ticid]['mass'].values[0]
-            plt.text(10**1.04, 10**-3.50, rf"G mag = {Gmag:.3f}   ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
-            plt.text(10**1.04, 10**-3.62, rf"Teff = {int(Teff)} K   ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
-            plt.text(10**1.04, 10**-3.74, rf"R = {R:.3f} $R_\odot$    ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
-            plt.text(10**1.04, 10**-3.86, rf"M = {M:.3f} $M_\odot$     ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+            plt.text(10**1.7, 10**-3.50, rf"G mag = {Gmag:.3f} ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+            plt.text(10**1.7, 10**-3.62, rf"Teff = {int(Teff)} K  ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+            plt.text(10**1.7, 10**-3.74, rf"R = {R:.3f} $R_\odot$  ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+            plt.text(10**1.7, 10**-3.86, rf"M = {M:.3f} $M_\odot$    ", fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
         except:
             pass
-        plt.text(10**1.5, 10**-3.50, f'depth = {depth:.4f}     ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
-        plt.text(10**1.5, 10**-3.62, f'depth_snr = {depth_snr:.4f} ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
-        plt.text(10**1.5, 10**-3.74, f'period = {period:.3f} days', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
-        plt.text(10**1.5, 10**-3.86, f't0 = {t0:.3f}         ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
 
         # plot ACF inset
         ax = plt.gca()
@@ -386,7 +388,7 @@ class Giant(object):
         fig.set_size_inches(12, 10)
 
         # save figure, timeseries, fft, and basic stats
-        fig.savefig(outdir+'/'+str(ticid)+'_quicklook.png')
+        fig.savefig(outdir+'/plots/'+str(ticid)+'_quicklook.png')
         np.savetxt(outdir+'/timeseries/'+str(ticid)+'.dat.ts', np.transpose([time, flux]), fmt='%.8f', delimiter=' ')
         np.savetxt(outdir+'/fft/'+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
         with open("transit_stats.txt", "a+") as file:
@@ -767,3 +769,7 @@ class Giant(object):
         fig = ktransit.plot_results(lc.time,lc.flux,fitT.transitmodel)
 
         fig.show()
+
+if __name__ == 'main':
+    target = Giant(csv_path='data/ticgiants_northerncvz.csv')
+    target.plot(*sys.argv[1:])
