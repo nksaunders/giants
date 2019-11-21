@@ -395,7 +395,7 @@ class Giant(object):
         with open(os.path.join(outdir,"transit_stats.txt"), "a+") as file:
             file.write(f"{ticid} {depth} {depth_snr} {period} {t0} {dur}\n")
 
-        plt.show()
+        # plt.show()
 
     def validate_transit(self, ticid=None, lc=None, rprs=0.02):
         """Take a closer look at potential transit signals."""
