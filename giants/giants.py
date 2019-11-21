@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import eleanor
 import numpy as np
 import pandas as pd
@@ -198,7 +199,7 @@ class Giant(object):
         self.lc = lc
         return lc
 
-    def plot(self, ticid, lc_source='eleanor', outdir='outputs', input_lc=None, method=None, **kwargs):
+    def plot(self, ticid, outdir='outputs', lc_source='eleanor', input_lc=None, method=None, **kwargs):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
         Parameters
@@ -391,7 +392,7 @@ class Giant(object):
         fig.savefig(outdir+'/plots/'+str(ticid)+'_quicklook.png')
         np.savetxt(outdir+'/timeseries/'+str(ticid)+'.dat.ts', np.transpose([time, flux]), fmt='%.8f', delimiter=' ')
         np.savetxt(outdir+'/fft/'+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
-        with open("transit_stats.txt", "a+") as file:
+        with open(os.path.join(outdir,"transit_stats.txt"), "a+") as file:
             file.write(f"{ticid} {depth} {depth_snr} {period} {t0} {dur}\n")
 
         plt.show()
@@ -770,6 +771,6 @@ class Giant(object):
 
         fig.show()
 
-if __name__ == 'main':
+if __name__ == '__main__':
     target = Giant(csv_path='data/ticgiants_northerncvz.csv')
     target.plot(*sys.argv[1:])
