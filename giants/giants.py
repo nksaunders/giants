@@ -9,12 +9,15 @@ import matplotlib.pyplot as plt
 from astropy.stats import BoxLeastSquares, mad_std, LombScargle
 import astropy.stats as ass
 import lightkurve as lk
-import lomb
 import warnings
 import astropy.stats as ass
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
 import ktransit
+try:
+    from . import lomb
+except:
+    import lomb
 
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
@@ -31,8 +34,8 @@ class Giant(object):
     def get_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         """Read in a csv of CVZ targets from a local file.
         """
-        PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.abspath(os.path.abspath(os.path.join(PACKAGEDIR, csv_path)))
+        self.PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
+        path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
         return pd.read_csv(path, skiprows=0)
 
     def get_target_list(self):
@@ -70,8 +73,7 @@ class Giant(object):
             i = ind
             ticid = self.target_list.ID.values[i]
         # search TESScut for the desired target, read its sectors
-        sr = lk.search_tesscut(ticid)
-        sectors = self._find_sectors(sr)
+        sectors = self._find_sectors(ticid)
         if isinstance(ticid, str):
             ticid = int(re.search(r'\d+', str(ticid)).group())
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
@@ -118,14 +120,23 @@ class Giant(object):
         LightCurveCollection :
             ~lightkurve.LightCurveCollection containing raw and corrected light curves.
         """
+        '''
+        #BUGFIX FOR ELEANOR
+        from astroquery.mast import Observations
+        server = 'https://mast.stsci.edu'
+        Observations._MAST_REQUEST_URL = server + "/api/v0/invoke"
+        Observations._MAST_DOWNLOAD_URL = server + "/api/v0.1/Download/file"
+        Observations._COLUMNS_CONFIG_URL = server + "/portal/Mashup/Mashup.asmx/columnsconfig"
+        '''
+
         # search TESScut to figure out which sectors you need (there's probably a better way to do this)
-        sr = lk.search_tesscut(ticid)
-        sectors = self._find_sectors(sr)
+        sectors = self._find_sectors(ticid)
         if isinstance(ticid, str):
             ticid = int(re.search(r'\d+', str(ticid)).group())
         self.ticid = ticid
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
+
         star = eleanor.Source(tic=ticid, sector=sectors[0], tc=True)
         data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=True, do_pca=True, try_load=True, save_postcard=save_postcard)
         q = data.quality == 0
@@ -155,11 +166,12 @@ class Giant(object):
         # store in a LightCurveCollection object and return
         return lk.LightCurveCollection([raw_lc, corr_lc, pca_lc, psf_lc])
 
-    def _find_sectors(self, sr):
+    def _find_sectors(self, ticid):
         """Helper function to read sectors from a search result."""
+        from astroquery.mast import Tesscut
         sectors = []
-        for desc in sr.table['description']:
-            sectors.append(int(re.search(r'\d+', str(desc)).group()))
+        for s in Tesscut().get_sectors(objectname=ticid)['sector']:
+            sectors.append(s)
         return sectors
 
     def _photometry(self, tpf, method=None, use_gp=False):
@@ -199,7 +211,7 @@ class Giant(object):
         self.lc = lc
         return lc
 
-    def plot(self, ticid, outdir='outputs', lc_source='eleanor', input_lc=None, method=None, **kwargs):
+    def plot(self, ticid, outdir=None, lc_source='eleanor', input_lc=None, method=None, show=True, **kwargs):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
         Parameters
@@ -327,7 +339,7 @@ class Giant(object):
         font = {'family':'monospace', 'size':10}
         plt.text(10**1.04, 10**-3.50, f'depth = {depth:.4f}        ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
         plt.text(10**1.04, 10**-3.62, f'depth_snr = {depth_snr:.4f}    ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
-        plt.text(10**1.04, 10**-3.74, f'period = {period:.3f}    days', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
+        plt.text(10**1.04, 10**-3.74, f'period = {period:.3f} days    ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
         plt.text(10**1.04, 10**-3.86, f't0 = {t0:.3f}            ', fontdict=font).set_bbox(dict(facecolor='white', alpha=.9, edgecolor='none'))
         try:
             # annotate with stellar params
@@ -389,13 +401,16 @@ class Giant(object):
         fig.set_size_inches(12, 10)
 
         # save figure, timeseries, fft, and basic stats
+        if outdir is None:
+            outdir = os.path.join(self.PACKAGEDIR, 'outputs')
         fig.savefig(outdir+'/plots/'+str(ticid)+'_quicklook.png')
         np.savetxt(outdir+'/timeseries/'+str(ticid)+'.dat.ts', np.transpose([time, flux]), fmt='%.8f', delimiter=' ')
         np.savetxt(outdir+'/fft/'+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
         with open(os.path.join(outdir,"transit_stats.txt"), "a+") as file:
             file.write(f"{ticid} {depth} {depth_snr} {period} {t0} {dur}\n")
 
-        # plt.show()
+        if show:
+            plt.show()
 
     def validate_transit(self, ticid=None, lc=None, rprs=0.02):
         """Take a closer look at potential transit signals."""
