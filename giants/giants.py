@@ -138,7 +138,10 @@ class Giant(object):
         # download target data for the desired source for only the first available sector
 
         star = eleanor.Source(tic=ticid, sector=sectors[0], tc=True)
-        data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=True, do_pca=True, try_load=True, save_postcard=save_postcard)
+        try:
+            data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=True, do_pca=True, try_load=True, save_postcard=save_postcard)
+        except:
+            data = eleanor.TargetData(star, height=7, width=7, bkg_size=21, do_psf=True, do_pca=True, try_load=True, save_postcard=save_postcard)
         q = data.quality == 0
         # create raw flux light curve
         raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q],label='raw', time_format='btjd').remove_nans().normalize()
