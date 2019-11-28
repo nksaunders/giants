@@ -36,7 +36,7 @@ class Giant(object):
         """
         self.PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
         path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
-        return pd.read_csv(path, skiprows=0)
+        return pd.read_csv(path, skiprows=0, dtype='unicode')
 
     def get_target_list(self):
         """Helper function to fetch a list of TIC IDs.
@@ -214,7 +214,7 @@ class Giant(object):
         self.lc = lc
         return lc
 
-    def plot(self, ticid, outdir=None, lc_source='eleanor', input_lc=None, method=None, show=True, **kwargs):
+    def plot(self, ticid, outdir=None, lc_source='eleanor', input_lc=None, method=None, show=False, **kwargs):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
         Parameters
@@ -792,6 +792,6 @@ class Giant(object):
 if __name__ == '__main__':
     try:
         target = Giant(csv_path='data/ticgiants_allsky_halo.csv')
-        target.plot(*sys.argv[1:], show=False)
+        target.plot(*sys.argv[1:])
     except:
         print(f'No data found for target {sys.argv[1]}')
