@@ -10,8 +10,8 @@ from astropy.stats import BoxLeastSquares, mad_std, LombScargle
 import astropy.stats as ass
 import lightkurve as lk
 import warnings
-import astropy.stats as ass
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from sklearn.decomposition import FastICA
 import astropy.units as u
 import ktransit
 try:
@@ -137,7 +137,7 @@ class Giant(object):
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
 
-        star = eleanor.Source(tic=ticid, sector=sectors[0], tc=True)
+        star = eleanor.Source(tic=ticid, sector=int(sectors[0]), tc=True)
         try:
             data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=True, do_pca=True, try_load=True, save_postcard=save_postcard)
         except:
@@ -154,7 +154,7 @@ class Giant(object):
         if len(sectors) > 1:
             for s in sectors[1:]:
                 try: # some sectors fail randomly
-                    star = eleanor.Source(tic=ticid, sector=s, tc=True)
+                    star = eleanor.Source(tic=ticid, sector=int(s), tc=True)
                     data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
                     q = data.quality == 0
 
@@ -324,6 +324,11 @@ class Giant(object):
         fitT = self.build_ktransit_model(lc=lc, vary_transit=False)
         dur = self._individual_ktransit_dur(fitT.time, fitT.transitmodel)
 
+        self.freq = freq
+        self.fts1 = fts/np.max(fts)
+        self.fts2 = scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5)
+        self.fts3 = scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50)
+
         '''
         Plot Periodogram
         ----------------
@@ -472,7 +477,7 @@ class Giant(object):
 
         plt.show()
 
-    def plot_gaia_overlay(self, ticid=None, tpf=None):
+    def plot_gaia_overlay(self, ticid=None, tpf=None, cutout_size=9):
         """Check if the source is contaminated."""
         from .utils import add_gaia_figure_elements
 
@@ -480,12 +485,21 @@ class Giant(object):
             ticid = self.ticid
 
         if tpf is None:
-            tpf = lk.search_tesscut(ticid)[0].download(cutout_size=9)
+            tpf = self.get_cutout(ticid)
 
         fig = tpf.plot()
         fig = add_gaia_figure_elements(tpf, fig)
 
         return fig
+
+    def get_cutout(self, ticid=None, cutout_size=9):
+        """ """
+        if ticid is None:
+            ticid = self.ticid
+
+        tpf = lk.search_tesscut(ticid)[0].download(cutout_size=cutout_size)
+
+        return tpf
 
     def fit_starry_model(self, lc=None, **kwargs):
         """
@@ -788,6 +802,41 @@ class Giant(object):
         fig = ktransit.plot_results(lc.time,lc.flux,fitT.transitmodel)
 
         fig.show()
+
+
+    def find_ica_components(self, tpf):
+        """ """
+        ##Perform ICA
+        n_components = 20
+
+        raw_lc = tpf.to_lightcurve(aperture_mask='all')
+
+        X = np.ascontiguousarray(np.nan_to_num(tpf.flux), np.float64)
+        X_flat = X.reshape(len(tpf.flux), -1) #turns three dimensional into two dimensional
+
+        f1 = np.reshape(X_flat, (len(X), -1))
+        X_pix = f1 / np.nansum(X_flat, axis=-1)[:, None]
+
+        ica = FastICA(n_components=n_components) #define n_components
+        S_ = ica.fit_transform(X_pix)
+        A_ = ica.mixing_ #combine x_flat to get x
+
+        # solve weights
+        a = np.dot(S_.T, S_)
+        a[np.diag_indices_from(a)] += 1e-5
+        b = np.dot(S_.T, raw_lc.flux)
+
+        w = np.linalg.solve(a, b)
+
+        # normalize to get sign of weight
+        w = [weight / np.abs(weight) for weight in w]
+
+        comp_lcs = []
+        for i,s in enumerate(S_.T):
+            component_lc = s * w[i]
+            comp_lcs.append(component_lc)
+
+        return comp_lcs
 
 if __name__ == '__main__':
     try:

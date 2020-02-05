@@ -3,6 +3,7 @@ __pycache__/
 giants/__pycache__/
 giants/__pycache__/*
 giants/data/ticgiants_bright_v2_skgrunblatt.csv
+giants/outputs/*
 Notebooks/plots/
 Notebooks/
 *.py[cod]
