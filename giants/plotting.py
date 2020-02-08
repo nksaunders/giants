@@ -278,7 +278,7 @@ def plot_transit_vetting(ticid, period, t0, lc=None, tpf=None):
     fig = plt.subplot2grid((6,4),(0,0),colspan=2,rowspan=2)
     fig.patch.set_facecolor('white')
 
-    tpf.plot(ax=fig, title='', show_colorbar=False)
+    tpf[100].plot(ax=fig, title='', show_colorbar=False)
     add_gaia_figure_elements(tpf, fig)
 
     fig = plt.subplot2grid((6,4),(2,0),colspan=2,rowspan=1)
@@ -286,13 +286,13 @@ def plot_transit_vetting(ticid, period, t0, lc=None, tpf=None):
     lc.fold(2*period, t0+period/2).bin(3).plot(ax=fig, c='C1', lw=2)
     plt.xlim(-.5, 0)
     rms = np.std(lc.flux)
-    plt.ylim(-2*rms, rms)
+    plt.ylim(-5*rms, 3*rms)
 
     fig = plt.subplot2grid((6,4),(3,0),colspan=2,rowspan=1)
     lc.fold(2*period, t0+period/2).scatter(ax=fig, c='k', label='Even Transit')
     lc.fold(2*period, t0+period/2).bin(3).plot(ax=fig, c='C1', lw=2)
     plt.xlim(0, .5)
-    plt.ylim(-2*rms, rms)
+    plt.ylim(-5*rms, 3*rms)
 
     fig = plt.subplot2grid((6,4),(0,2),colspan=4,rowspan=4)
     for i,lc in enumerate(ica_lcs):
