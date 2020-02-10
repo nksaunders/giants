@@ -6,7 +6,7 @@ import lightkurve as lk
 from astropy.coordinates import SkyCoord, Angle
 import matplotlib.pyplot as plt
 
-def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=1.):
+def create_starry_model(time, rprs=.02, period=6., t0=4., i=90, ecc=0., m_star=1.2):
     """ """
     # instantiate a starry primary object (star)
     star = starry.kepler.Primary()
