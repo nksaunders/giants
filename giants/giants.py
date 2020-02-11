@@ -32,9 +32,12 @@ __all__ = ['Giant']
 class Giant(object):
     """An object to store and analyze time series data for giant stars.
     """
-    def __init__(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
+    def __init__(self, ticid, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         self.target_list = self.get_targets(csv_path)
         self.lc_exists = False
+        self.ticid = ticid
+        if isinstance(self.ticid, str):
+            self.ticid = int(re.search(r'\d+', str(self.ticid)).group())
 
     def get_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         """Read in a csv of CVZ targets from a local file.
@@ -53,72 +56,11 @@ class Giant(object):
         """
         return self.target_list.ID.values
 
-    def from_lightkurve(self, ind=0, ticid=None, method=None, cutout_size=9):
-        """Download cutouts around target for each sector using Lightkurve
-        and create light curves.
-        Requires either `ind` or `ticid`.
-
-        Parameters
-        ----------
-        ind : int
-            Index of target array to download files for
-        ticid : int
-            TIC ID of desired target
-        pld : boolean
-            Option to detrend raw light curve with PLD
-        cutout_size : int or tuple
-            Dimensions of TESScut cutout in pixels
-
-        Returns
-        -------
-        LightCurveCollection :
-            ~lightkurve.LightCurveCollection containing raw and corrected light curves.
-        """
-        if ticid == None:
-            i = ind
-            ticid = self.target_list.ID.values[i]
-        # search TESScut for the desired target, read its sectors
-        sectors = self._find_sectors(ticid)
-        if isinstance(ticid, str):
-            ticid = int(re.search(r'\d+', str(ticid)).group())
-        print(f'Creating light curve for target {ticid} for sectors {sectors}.')
-        # download the TargetPixelFileCollection for TESScut observations
-        tpfc = sr.download_all(cutout_size=cutout_size)
-        rlc = self._photometry(tpfc[0]).normalize()
-        # track breakpoints between sectors
-        self.breakpoints = [rlc.time[-1]]
-        # iterate through TPFs and perform photometry on each of them
-        for t in tpfc[1:]:
-            single_rlc = self._photometry(t).normalize()
-            rlc = rlc.append(single_rlc)
-            self.breakpoints.append(single_rlc.time[-1])
-        rlc.label = 'Raw {ticid}'
-        # do the same but with de-trending (if you want)
-        if method is not None:
-            clc = self._photometry(tpfc[0], method=method).normalize()
-            for t in tpfc[1:]:
-                single_clc = self._photometry(t, method=method).normalize()
-                clc = clc.append(single_clc)
-            clc.label = 'PLD {ticid}'
-            rlc = rlc.remove_nans()
-            clc = clc.remove_nans()
-            return lk.LightCurveCollection([rlc, clc])
-        else:
-            rlc = rlc.remove_nans()
-            return lk.LightCurveCollection([rlc])
-
-    def from_eleanor(self, ticid, save_postcard=False):
+    def from_eleanor(self, save_postcard=False):
         """Download light curves from Eleanor for desired target. Eleanor light
         curves include:
         - raw : raw flux light curve
         - corr : corrected flux light curve
-        - pca : principle component analysis light curve
-        - psf : point spread function photometry light curve
-
-        Parameters
-        ----------
-        ticid : int
-            TIC ID of desired target
 
         Returns
         -------
@@ -136,14 +78,11 @@ class Giant(object):
         '''
 
         # search TESScut to figure out which sectors you need (there's probably a better way to do this)
-        if isinstance(ticid, str):
-            ticid = int(re.search(r'\d+', str(ticid)).group())
-        self.ticid = ticid
-        sectors = self._find_sectors(f'TIC {ticid}')
-        print(f'Creating light curve for target {ticid} for sectors {sectors}.')
+        sectors = self._find_sectors(f'TIC {self.ticid}')
+        print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
 
-        star = eleanor.Source(tic=ticid, sector=int(sectors[0]), tc=True)
+        star = eleanor.Source(tic=self.ticid, sector=int(sectors[0]), tc=True)
         try:
             data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=False, do_pca=False, try_load=True, save_postcard=save_postcard)
         except:
@@ -152,22 +91,19 @@ class Giant(object):
         # create raw flux light curve
         raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q],label='raw', time_format='btjd').remove_nans().normalize()
         corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], flux_err=data.flux_err[q], label='corr', time_format='btjd').remove_nans().normalize()
-        # pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q],label='pca', time_format='btjd').remove_nans().normalize()
-        # psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q],label='psf', time_format='btjd').remove_nans().normalize()
+
         #track breakpoints between sectors
         self.breakpoints = [raw_lc.time[-1]]
         # iterate through extra sectors and append the light curves
         if len(sectors) > 1:
             for s in sectors[1:]:
                 try: # some sectors fail randomly
-                    star = eleanor.Source(tic=ticid, sector=int(s), tc=True)
+                    star = eleanor.Source(tic=self.ticid, sector=int(s), tc=True)
                     data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=False, do_pca=False, try_load=True)
                     q = data.quality == 0
 
                     raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
                     corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
-                    # pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
-                    # psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
 
                     self.breakpoints.append(raw_lc.time[-1])
                 except:
@@ -220,12 +156,12 @@ class Giant(object):
         self.lc = lc
         return lc
 
-    def vet_transit(self, ticid, lc=None, tpf=None, **kwargs):
+    def vet_transit(self, lc=None, tpf=None, **kwargs):
         """
 
         """
         if not self.lc_exists:
-            lcc = self.from_eleanor(ticid, **kwargs)
+            lcc = self.from_eleanor(**kwargs)
             lc = lcc[1] # using corr_lc
             time = lc.time
             flux = lc.flux
@@ -233,11 +169,11 @@ class Giant(object):
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
             self.lc = self._clean_data(lc)
 
-        fig = plot_transit_vetting(ticid, self.lc, tpf)
+        fig = plot_transit_vetting(self.ticid, self.lc, tpf)
 
         plt.show()
 
-    def plot(self, ticid, outdir=None, lc_source='eleanor', input_lc=None, method=None, show=False, save_data=True, **kwargs):
+    def plot(self, outdir=None, lc_source='eleanor', input_lc=None, method=None, show=False, save_data=True, **kwargs):
         """Produce a quick look plot to characterize giants in the TESS catalog.
 
         Parameters
@@ -266,29 +202,11 @@ class Giant(object):
         if outdir is None:
             outdir = os.path.join(self.PACKAGEDIR, 'outputs')
 
-        self.ticid = ticid
         plt.subplot2grid((4,4),(0,0),colspan=2)
 
-        if lc_source == 'lightkurve':
-            lcc = self.from_lightkurve(ticid=ticid, method=method)
-            q = lcc[0].quality == 0
-
-            plt.plot(lcc[0].time[q], lcc[0].flux[q], 'k', label="Raw")
-            if len(lcc) > 1:
-                q = lcc[1].quality == 0
-                plt.plot(lcc[1].time[q], lcc[1].flux[q]+.2, 'r', label="Corr")
-            for val in self.breakpoints:
-                plt.axvline(val, c='b', linestyle='dashed')
-            plt.legend(loc=0)
-            lc = lcc[-1]
-            time = lc.time[q]
-            flux = lc.flux[q]
-            flux_err = lc.flux_err[q]
-            lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err).remove_nans()
-
-        elif lc_source == 'eleanor':
-            lcc = self.from_eleanor(ticid, **kwargs)
-            for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.01, 0, 0.01, -.02]):
+        if lc_source == 'eleanor':
+            lcc = self.from_eleanor(**kwargs)
+            for lc, label, offset in zip(lcc, ['raw', 'corr'], [0, 0.01]):
                 plt.plot(lc.time, lc.flux + offset, label=label)
             for val in self.breakpoints:
                 plt.axvline(val, c='b', linestyle='dashed')
@@ -313,21 +231,22 @@ class Giant(object):
         lc = self._clean_data(lc)
         time, flux, flux_err = lc.time, lc.flux, lc.flux_err
 
-        fig = plot_quicklook(lc, ticid, self.breakpoints, self.target_list, save_data, outdir)
+        fig = plot_quicklook(lc, self.ticid, self.breakpoints, self.target_list, save_data, outdir)
 
         # save figure, timeseries, fft, and basic stats
-        fig.savefig(outdir+'/plots/'+str(ticid)+'_quicklook.png')
+        fig.savefig(str(outdir)+'/plots/'+str(self.ticid)+'_quicklook.png')
         if show:
             plt.show()
 
-    def pdf_summary(self, ticid, out_fname):
+    def pdf_summary(self, outdir=None):
         """
 
         """
-        self.ticid=ticid
-        with PdfPages(out_fname) as pdf:
+        if outdir is None:
+            outdir = os.path.join(self.PACKAGEDIR, 'outputs')
+        with PdfPages(os.path.join(outdir, str(self.ticid)+'_summary.pdf')) as pdf:
 
-            ql_fig = self.plot(self.ticid, save_postcard=True)
+            ql_fig = self.plot(save_postcard=True, outdir=outdir)
             pdf.savefig(ql_fig)
             plt.close()
             lc = self.lc
@@ -356,7 +275,7 @@ class Giant(object):
         from .plotting import create_starry_model
 
         if ticid is not None:
-            lc = self.from_eleanor(ticid)[1]
+            lc = self.from_eleanor()[1]
             lc = self._clean_data(lc)
         elif lc is None:
             lc = self.lc
@@ -404,7 +323,7 @@ class Giant(object):
         ax[2].set_xlim([-0.1, .1])
         ax[2].set_ylim([-.002, .002])
 
-        ax[0].set_title(f'{ticid}', fontsize=14)
+        ax[0].set_title(f'{self.ticid}', fontsize=14)
 
         plt.show()
 
@@ -509,7 +428,7 @@ class Giant(object):
     def validate_ktransit(self, ticid=None, lc=None, rprs=0.02):
         """ """
         if ticid is not None:
-            lc = self.from_eleanor(ticid)[1]
+            lc = self.from_eleanor()[1]
             lc = self._clean_data(lc)
         elif lc is None:
             lc = self.lc
@@ -533,7 +452,7 @@ class Giant(object):
 
         self.ticid = ticid
         plt.subplot2grid((8,16),(0,0),colspan=4, rowspan=1)
-        lcc = self.from_eleanor(ticid, **kwargs)
+        lcc = self.from_eleanor(**kwargs)
         for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.01, 0, 0.01, -.02]):
             plt.plot(lc.time, lc.flux + offset, label=label)
         for val in self.breakpoints:
