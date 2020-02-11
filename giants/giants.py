@@ -136,24 +136,24 @@ class Giant(object):
         '''
 
         # search TESScut to figure out which sectors you need (there's probably a better way to do this)
-        sectors = self._find_sectors(ticid)
         if isinstance(ticid, str):
             ticid = int(re.search(r'\d+', str(ticid)).group())
         self.ticid = ticid
+        sectors = self._find_sectors(f'TIC {ticid}')
         print(f'Creating light curve for target {ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
 
         star = eleanor.Source(tic=ticid, sector=int(sectors[0]), tc=True)
         try:
-            data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=True, do_pca=True, try_load=True, save_postcard=save_postcard)
+            data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=False, do_pca=False, try_load=True, save_postcard=save_postcard)
         except:
-            data = eleanor.TargetData(star, height=7, width=7, bkg_size=21, do_psf=True, do_pca=True, try_load=True, save_postcard=save_postcard)
+            data = eleanor.TargetData(star, height=7, width=7, bkg_size=21, do_psf=False, do_pca=False, try_load=True, save_postcard=save_postcard)
         q = data.quality == 0
         # create raw flux light curve
         raw_lc = lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q],label='raw', time_format='btjd').remove_nans().normalize()
         corr_lc = lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], flux_err=data.flux_err[q], label='corr', time_format='btjd').remove_nans().normalize()
-        pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q],label='pca', time_format='btjd').remove_nans().normalize()
-        psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q],label='psf', time_format='btjd').remove_nans().normalize()
+        # pca_lc = lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q],label='pca', time_format='btjd').remove_nans().normalize()
+        # psf_lc = lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q],label='psf', time_format='btjd').remove_nans().normalize()
         #track breakpoints between sectors
         self.breakpoints = [raw_lc.time[-1]]
         # iterate through extra sectors and append the light curves
@@ -161,19 +161,19 @@ class Giant(object):
             for s in sectors[1:]:
                 try: # some sectors fail randomly
                     star = eleanor.Source(tic=ticid, sector=int(s), tc=True)
-                    data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=True, do_pca=True, try_load=True)
+                    data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=False, do_pca=False, try_load=True)
                     q = data.quality == 0
 
                     raw_lc = raw_lc.append(lk.LightCurve(time=data.time[q], flux=data.raw_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
                     corr_lc = corr_lc.append(lk.LightCurve(time=data.time[q], flux=data.corr_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
-                    pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
-                    psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                    # pca_lc = pca_lc.append(lk.LightCurve(time=data.time[q], flux=data.pca_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
+                    # psf_lc = psf_lc.append(lk.LightCurve(time=data.time[q], flux=data.psf_flux[q], flux_err=data.flux_err[q], time_format='btjd').remove_nans().normalize())
 
                     self.breakpoints.append(raw_lc.time[-1])
                 except:
                     continue
         # store in a LightCurveCollection object and return
-        return lk.LightCurveCollection([raw_lc, corr_lc, pca_lc, psf_lc])
+        return lk.LightCurveCollection([raw_lc, corr_lc])
 
     def _find_sectors(self, ticid):
         """Helper function to read sectors from a search result."""
@@ -339,7 +339,7 @@ class Giant(object):
             period = results.period[np.argmax(results.power)]
             t0 = results.transit_time[np.argmax(results.power)]
 
-            vt_fig = plot_transit_vetting(self.ticid, period, t0, lc=self.lc)
+            vt_fig = plot_transit_vetting(f'TIC {self.ticid}', period, t0, lc=self.lc)
             pdf.savefig(vt_fig)
             plt.close()
 
