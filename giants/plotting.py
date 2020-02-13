@@ -83,9 +83,11 @@ def make_ica_plot(tic, tpf=None):
     fig, ax = plt.subplots(2, 3, figsize=(10, 7))
     fig.suptitle(f'TIC {tic}')
 
+    scale = np.median(raw_lc.flux) / 10
+
     for i,c in enumerate(comp_lcs):
-        ax[0,0].plot(tpf.time, c + i*1e5)
-    ax[0,0].set_ylim(-1e5, n_components*1e5)
+        ax[0,0].plot(tpf.time, c + i*scale)
+    ax[0,0].set_ylim(-scale, n_components*scale)
     ax[0,0].set_xlim(tpf.time[0], tpf.time[-1])
     ax[0,0].set_xlabel('Time')
     ax[0,0].set_ylabel('Flux')
@@ -296,7 +298,7 @@ def plot_transit_vetting(ticid, period, t0, lc=None, tpf=None):
 
     fig = plt.subplot2grid((6,4),(0,2),colspan=4,rowspan=4)
     for i,lc in enumerate(ica_lcs):
-        scale = 1
+        scale = .5
         plt.plot(lc + i*scale)
     plt.xlim(0, len(ica_lcs[0]))
     plt.ylim(-scale, len(ica_lcs)*scale)

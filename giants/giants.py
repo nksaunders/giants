@@ -154,6 +154,7 @@ class Giant(object):
 
         # store cleaned lc
         self.lc = lc
+        self.mask = mask
         return lc
 
     def vet_transit(self, lc=None, tpf=None, **kwargs):
@@ -404,8 +405,8 @@ class Giant(object):
         -------------------
         '''
         lc.fold(period, t0).scatter(ax=ax[1], c='k', label=rf'$P={period:.3f}, t0={t0:.3f}, '
-                                                             'R_p={r_pl:.3f} R_J, b={b:.3f}, '
-                                                             '\tau_T$={dur:.3f} days ({dur * 24:.3f} hrs)')
+                                                             rf'R_p={r_pl:.3f} R_J, b={b:.3f}, '
+                                                             rf'\tau_T$={dur:.3f} days ({dur * 24:.3f} hrs)')
         lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', alpha=.75, lw=2)
         model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2)
         ax[1].set_xlim([-0.5, .5])
