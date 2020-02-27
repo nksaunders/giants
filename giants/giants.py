@@ -11,7 +11,6 @@ import astropy.stats as ass
 import lightkurve as lk
 import warnings
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from sklearn.decomposition import FastICA
 import astropy.units as u
 import ktransit
 from matplotlib.backends.backend_pdf import PdfPages
@@ -22,6 +21,12 @@ except:
 
 from .plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, superplot
 from .utils import get_cutout
+
+#optional imports
+try:
+    from sklearn.decomposition import FastICA
+except:
+    print('ICA not available.')
 
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")

@@ -12,7 +12,6 @@ from astropy.coordinates import SkyCoord, Angle
 import lightkurve as lk
 import warnings
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from sklearn.decomposition import FastICA
 import astropy.units as u
 import ktransit
 import matplotlib.ticker as mtick
@@ -22,6 +21,12 @@ except:
     import lomb
 
 from .utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
+
+#optional imports
+try:
+    from sklearn.decomposition import FastICA
+except:
+    print('ICA not available.')
 
 def make_ica_plot(tic, tpf=None):
     """
