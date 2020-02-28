@@ -21,8 +21,6 @@ except:
 #optional imports
 try:
     from sklearn.decomposition import FastICA
-except:
-    print('ICA not available.')
 
 def _calculate_separation(m_star, period):
     """ """
