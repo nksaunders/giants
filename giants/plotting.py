@@ -17,10 +17,11 @@ import ktransit
 import matplotlib.ticker as mtick
 try:
     from . import lomb
+    from .utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
 except:
     import lomb
+    from utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
 
-from .utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
 
 #optional imports
 try:

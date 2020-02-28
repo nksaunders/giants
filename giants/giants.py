@@ -16,11 +16,13 @@ import ktransit
 from matplotlib.backends.backend_pdf import PdfPages
 try:
     from . import lomb
+    from .plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, superplot
+    from .utils import get_cutout
 except:
     import lomb
+    from plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, superplot
+    from utils import get_cutout
 
-from .plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, superplot
-from .utils import get_cutout
 
 #optional imports
 try:
