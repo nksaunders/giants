@@ -21,6 +21,8 @@ except:
 #optional imports
 try:
     from sklearn.decomposition import FastICA
+except:
+    pass
 
 def _calculate_separation(m_star, period):
     """ """

@@ -26,6 +26,8 @@ except:
 #optional imports
 try:
     from sklearn.decomposition import FastICA
+except:
+    pass
 
 # suppress verbose astropy warnings and future warnings
 warnings.filterwarnings("ignore", module="astropy")
