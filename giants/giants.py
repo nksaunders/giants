@@ -23,7 +23,6 @@ except:
     from plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, superplot
     from utils import get_cutout
 
-
 #optional imports
 try:
     from sklearn.decomposition import FastICA

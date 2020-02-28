@@ -11,7 +11,6 @@ import astropy.stats as ass
 import lightkurve as lk
 import warnings
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from sklearn.decomposition import FastICA
 import astropy.units as u
 import ktransit
 try:
@@ -19,6 +18,11 @@ try:
 except:
     import lomb
 
+#optional imports
+try:
+    from sklearn.decomposition import FastICA
+except:
+    print('ICA not available.')
 
 def _calculate_separation(m_star, period):
     """ """
