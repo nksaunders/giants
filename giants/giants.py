@@ -480,6 +480,6 @@ class Giant(object):
 if __name__ == '__main__':
     try:
         target = Giant(csv_path='data/ticgiants_allsky_halo.csv')
-        target.plot(*sys.argv[1:])
+        target.plot(f'TIC {*sys.argv[1:]}')
     except:
         print(f'No data found for target {sys.argv[1]}')
