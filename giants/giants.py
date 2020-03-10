@@ -119,10 +119,13 @@ class Giant(object):
 
     def _find_sectors(self, ticid):
         """Helper function to read sectors from a search result."""
-        from astroquery.mast import Tesscut
+        # from astroquery.mast import Tesscut
         sectors = []
-        for s in Tesscut().get_sectors(objectname=ticid)['sector']:
-            sectors.append(s)
+        # for s in Tesscut().get_sectors(objectname=ticid)['sector']:
+        #     sectors.append(s)
+        search_result = lk.search_tesscut(f'TIC {ticid}')
+        for sector in search_result.table['description']:
+            sectors.append(int(re.search(r'\d+', sector).group()))
         return sectors
 
     def _photometry(self, tpf, method=None, use_gp=False):
