@@ -2,7 +2,6 @@ import giants as g
 import numpy as np
 import lightkurve as lk
 from sklearn.decomposition import FastICA, PCA
-from fbpca import pca
 import matplotlib.pyplot as plt
 from astropy.stats import BoxLeastSquares
 from transitleastsquares import transitleastsquares
