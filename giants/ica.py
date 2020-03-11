@@ -1,7 +1,6 @@
 import giants as g
 import numpy as np
 import lightkurve as lk
-from sympy.plotting import plot
 from sklearn.decomposition import FastICA, PCA
 from fbpca import pca
 import matplotlib.pyplot as plt
