@@ -1,7 +1,6 @@
 import os
 import re
 import sys
-import eleanor
 import numpy as np
 import pandas as pd
 import scipy
@@ -14,6 +13,10 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
 import ktransit
 from matplotlib.backends.backend_pdf import PdfPages
+try:
+    from . import eleanor
+except:
+    import eleanor
 try:
     from . import lomb
     from .plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, superplot
