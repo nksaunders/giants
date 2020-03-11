@@ -84,7 +84,7 @@ class Giant(object):
         '''
 
         # search TESScut to figure out which sectors you need (there's probably a better way to do this)
-        sectors = self._find_sectors(f'TIC {self.ticid}')
+        sectors = self._find_sectors(self.ticid)
         print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
 
