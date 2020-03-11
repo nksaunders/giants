@@ -4,7 +4,6 @@ import lightkurve as lk
 from sklearn.decomposition import FastICA, PCA
 import matplotlib.pyplot as plt
 from astropy.stats import BoxLeastSquares
-from transitleastsquares import transitleastsquares
 import matplotlib.ticker as mtick
 
 __all__ = ['get_ica_components']
