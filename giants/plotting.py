@@ -14,10 +14,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
 import ktransit
 import matplotlib.ticker as mtick
-try:
-    from . import eleanor
-except:
-    import eleanor
+import eleanor
 try:
     from . import lomb
     from .utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
