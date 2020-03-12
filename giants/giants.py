@@ -91,7 +91,7 @@ class Giant(object):
         print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
 
-        star = eleanor.Source(tic=self.ticid, sector=int(sectors[0]), tc=False)
+        star = eleanor.Source(tic=self.ticid, sector=int(sectors[0]), tc=True)
         try:
             data = eleanor.TargetData(star, height=11, width=11, bkg_size=27, do_psf=False, do_pca=False, try_load=True, save_postcard=save_postcard)
         except:
@@ -107,7 +107,7 @@ class Giant(object):
         if len(sectors) > 1:
             for s in sectors[1:]:
                 try: # some sectors fail randomly
-                    star = eleanor.Source(tic=self.ticid, sector=int(s), tc=False)
+                    star = eleanor.Source(tic=self.ticid, sector=int(s), tc=True)
                     data = eleanor.TargetData(star, height=15, width=15, bkg_size=31, do_psf=False, do_pca=False, try_load=True)
                     q = data.quality == 0
 
