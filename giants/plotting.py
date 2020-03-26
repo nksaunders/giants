@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
+import matplotlib
 from astropy.stats import BoxLeastSquares, mad_std, LombScargle
 import astropy.stats as ass
 from astropy.coordinates import SkyCoord, Angle
@@ -379,6 +380,242 @@ def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=
     system.compute(time)
     # return the light curve
     return system.lightcurve
+
+def plot_summary(target, outdir=None, save_data=False):
+    """
+
+    """
+
+    if outdir is None:
+        outdir = os.path.join(target.PACKAGEDIR, 'outputs')
+
+    font = {'family' : 'serif',
+        'size'   : 10}
+    matplotlib.rc('font', **font)
+
+    dims=(20, 12)
+
+    ax = plt.subplot2grid(dims, (0,0), colspan=12, rowspan=3)
+    plot_raw_lc(target, ax)
+    plt.title('TIC 176956893')
+
+    ax = plt.subplot2grid(dims, (4,6), colspan=6, rowspan=2)
+    bls_results = get_bls_results(target.lc)
+    period = bls_results.period[np.argmax(bls_results.power)]
+    t0 = bls_results.transit_time[np.argmax(bls_results.power)]
+    depth = bls_results.depth[np.argmax(bls_results.power)]
+    depth_snr = bls_results.depth_snr[np.argmax(bls_results.power)]
+    plot_bls(target.lc, ax, results=bls_results)
+    plt.subplots_adjust(hspace=0)
+
+    ax = plt.subplot2grid(dims, (6,6), colspan=6, rowspan=6)
+    freq, fts = plot_fft(target.lc, ax)
+
+    ax = plt.subplot2grid(dims, (4,0), colspan=5, rowspan=2)
+    plot_folded(target.lc, period, t0, depth, ax)
+
+    ax = plt.subplot2grid(dims, (7,0), colspan=5, rowspan=5)
+    plot_tpf(target, ax)
+
+    ax = plt.subplot2grid(dims, (13,0), colspan=5, rowspan=2)
+    plot_even(target.lc, period, t0, depth, ax)
+
+    ax = plt.subplot2grid(dims, (15,0), colspan=5, rowspan=2)
+    plot_odd(target.lc, period, t0, depth, ax)
+    plt.subplots_adjust(hspace=0)
+
+    ax = plt.subplot2grid(dims, (13,6), colspan=6, rowspan=3)
+    model_lc, ktransit_model = fit_transit_model(target)
+    result = ktransit_model.fitresult[1:]
+    kt_period = result[0]
+    kt_t0 = result[2]
+    plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
+
+    ax = plt.subplot2grid(dims, (16,6), colspan=6, rowspan=1)
+    plot_tr_bottom(target.lc, model_lc, kt_period, kt_t0, ax)
+    plt.subplots_adjust(hspace=0)
+
+    ax = plt.subplot2grid(dims, (19,0), colspan=12, rowspan=1)
+    plot_table(model_lc, ktransit_model, depth_snr, ax)
+
+    fig = plt.gcf()
+    fig.patch.set_facecolor('white')
+    fig.set_size_inches(dims[::-1])
+
+    if save_data:
+        np.savetxt(outdir+'/timeseries/'+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time, target.lc.flux]), fmt='%.8f', delimiter=' ')
+        np.savetxt(outdir+'/fft/'+str(target.ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
+        with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
+            file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur}\n")
+
+    fig.savefig(str(outdir)+'/plots/'+str(target.ticid)+'_summary.png')
+
+def fit_transit_model(target):
+    """
+
+    """
+
+    ktransit_model = build_ktransit_model(target.ticid, target.lc)
+
+    model_lc = lk.LightCurve(time=target.lc.time, flux=ktransit_model.transitmodel)
+    return model_lc, ktransit_model
+
+def plot_raw_lc(target, ax=None):
+    """
+    """
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+
+    target.lc.plot(ax=ax, c='k')
+    ax.set_xlim(target.lc.time[0], target.lc.time[-1])
+    for b in target.breakpoints:
+        ax.axvline(b, linestyle='--', color='C1')
+
+def plot_tr_top(flux_lc, model_lc, per, t0, ax):
+    res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
+    res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
+
+    depth = 0 - np.min(model_lc.flux)
+
+    ax.set_xticklabels([])
+    ax.set_xlim(-.1, .1)
+    ax.set_ylim(np.min(model_lc.flux)-depth*2, depth*2)
+
+    flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray')
+    flux_lc.fold(per, t0).remove_outliers().bin().scatter(ax=ax, c='C1', s=10, alpha=.75)
+    model_lc.fold(per, t0).plot(ax=ax, c='k', lw=2)
+
+    ax.set_ylabel('Normalized Flux')
+
+def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
+    res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
+    res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
+    res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray')
+    res_lc.fold(per, t0).remove_outliers().bin().scatter(ax=ax, c='C1', s=10, alpha=.75)
+    ax.axhline(0, c='k', linestyle='dashed')
+    ax.set_xlim(-.1, .1)
+    ax.set_ylabel('Residuals (ppm)')
+
+def plot_fft(lc, ax=None):
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+    osample=5.
+    nyq=283.
+
+    time = lc.time
+    flux = lc.flux
+
+    # calculate FFT
+    freq, amp, nout, jmax, prob = lomb.fasper(time, flux, osample, 3.)
+    freq = 1000. * freq / 86.4
+    bin = freq[1] - freq[0]
+    fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
+
+    use = np.where(freq < nyq + 150)
+    freq = freq[use]
+    fts = fts[use]
+
+    ax.loglog(freq, fts/np.max(fts))
+    ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='C1', lw=2.5)
+    ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='r', lw=2.5)
+    ax.axvline(283,-1,1, ls='--', color='k')
+    ax.set_xlabel("Frequency [uHz]")
+    ax.set_ylabel("Power")
+    ax.set_xlim(10, 400)
+    ax.set_ylim(1e-4, 1e0)
+
+    return freq, fts
+
+def get_bls_results(lc):
+    model = BoxLeastSquares(lc.time, lc.flux)
+    results = model.autopower(0.16, minimum_period=2., maximum_period=21.)
+    return results
+
+def plot_bls(lc, ax, results=None):
+
+    time, flux, flux_err = lc.time, lc.flux, lc.flux_err
+
+    if results is None:
+        results = get_bls_results(lc)
+    period = results.period[np.argmax(results.power)]
+    t0 = results.transit_time[np.argmax(results.power)]
+    depth = results.depth[np.argmax(results.power)]
+    depth_snr = results.depth_snr[np.argmax(results.power)]
+
+    ax.plot(results.period, results.power, "k", lw=0.5)
+    ax.set_xlim(results.period.min(), results.period.max())
+    ax.set_xlabel("period [days]")
+    ax.set_ylabel("log likelihood")
+
+    # Highlight the harmonics of the peak period
+    ax.axvline(period, alpha=0.4, lw=4)
+    for n in range(2, 10):
+        ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed")
+        ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed")
+
+def plot_folded(lc, period, t0, depth, ax):
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+    time, flux, flux_err = lc.time, lc.flux, lc.flux_err
+
+    phase = (t0 % period) / period
+    foldedtimes = (((time - phase * period) / period) % 1)
+    foldedtimes[foldedtimes > 0.5] -= 1
+    foldtimesort = np.argsort(foldedtimes)
+    foldfluxes = flux[foldtimesort]
+
+    ax.plot(foldedtimes, flux, 'k.', markersize=2)
+    ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='C1')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
+    ax.set_xlabel('Phase')
+    ax.set_ylabel('Flux')
+    ax.set_xlim(-0.5, 0.5)
+    ax.set_ylim(-3*depth, 2*depth)
+    plt.grid(True)
+
+def plot_odd(lc, period, t0, depth, ax):
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Odd Transit')
+    lc.fold(2*period, t0+period/2).bin(10).plot(ax=ax, c='C1', lw=2)
+    ax.set_xlim(0, .5)
+    ax.set_ylim(-3*depth, 2*depth)
+
+    plt.grid(True)
+
+def plot_even(lc, period, t0, depth, ax):
+
+    if ax is None:
+        _, ax = plt.subplots(1)
+
+    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Even Transit')
+    lc.fold(2*period, t0+period/2).bin(10).plot(ax=ax, c='C1', lw=2)
+    ax.set_xlim(-.5, 0)
+    ax.set_ylim(-3*depth, 2*depth)
+
+    plt.grid(True)
+
+def plot_tpf(target, ax):
+    ax = target.tpf.plot(ax=ax, title='', show_colorbar=False)
+    ax = add_gaia_figure_elements(target.tpf, ax)
+
+def plot_table(model_lc, ktransit_model, depth_snr, ax):
+    result = ktransit_model.fitresult[1:]
+    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
+
+    col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR']
+    values = [f'{val:.3f}' for val in result]
+    values.append(f'{dur:.3f}')
+    values.append(f'{depth_snr:.3f}')
+
+    ax.axis('tight')
+    ax.axis('off')
+    ax.table(cellText=[values], colLabels=col_labels, loc='center')
 
 def superplot(lc, ticid, breakpoints, target_list, save_data=False, outdir=None):
     """

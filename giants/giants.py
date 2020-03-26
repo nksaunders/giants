@@ -16,11 +16,11 @@ from matplotlib.backends.backend_pdf import PdfPages
 import eleanor
 try:
     from . import lomb
-    from .plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, superplot
+    from .plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, plot_summary
     from .utils import get_cutout
 except:
     import lomb
-    from plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, superplot
+    from plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, plot_summary
     from utils import get_cutout
 
 #optional imports
@@ -38,10 +38,11 @@ __all__ = ['Giant']
 class Giant(object):
     """An object to store and analyze time series data for giant stars.
     """
-    def __init__(self, ticid, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
+    def __init__(self, ticid, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv', cache_path=None):
         self.target_list = self.get_targets(csv_path)
         self.lc_exists = False
         self.ticid = ticid
+        self.cache_path = cache_path
         if isinstance(self.ticid, str):
             self.ticid = int(re.search(r'\d+', str(self.ticid)).group())
 
@@ -117,6 +118,41 @@ class Giant(object):
         # store in a LightCurveCollection object and return
         return lk.LightCurveCollection([raw_lc, corr_lc])
 
+    def from_lightkurve(self, **kwargs):
+        """
+
+        """
+        # search TESScut to figure out which sectors you need (there's probably a better way to do this)
+        sectors = self._find_sectors(self.ticid)
+        print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
+
+        search = lk.search_tesscut(f'TIC {self.ticid}')
+        tpfc = lk.TargetPixelFileCollection([])
+        if self.cache_path is None:
+            for sector in search:
+                try:
+                    tpfc.append(sector.download(cutout_size=11))
+                except:
+                    continue
+        else:
+            for sector in search:
+                try:
+                    tpfc.append(sector.download(cutout_size=11, download_dir=self.cache_path))
+                except:
+                    continue
+
+        self.tpf = tpfc[0]
+        lc = self.simple_pca(self.tpf)
+        self.breakpoints = [lc.time[-1]]
+        for tpf in tpfc[1:]:
+            new_lc = self.simple_pca(tpf)
+            self.breakpoints.append(new_lc.time[-1])
+            lc = lc.append(new_lc)
+
+        self.lc = lc
+
+        return lc
+
     def _find_sectors(self, ticid):
         """Helper function to read sectors from a search result."""
         # from astroquery.mast import Tesscut
@@ -148,10 +184,12 @@ class Giant(object):
                      1504.7199096679688, 1530.2824096679688, 1535.0115966796875, 1556.74072265625, 1582.7824096679688,
                      1610.8031616210938, 1640.0531616210938, 1668.6415405273438, 1697.3673095703125, 1724.9667358398438,
                      1751.6751098632812]
+        """
         # mask around downlinks
         for d in downlinks:
             if d in lc.time:
                 burnin[d:d+15] = True
+        """
         # also 6 sigma outliers
         _, outliers = lc.remove_outliers(sigma=6, return_mask=True)
         mask = momdump | outliers | burnin
@@ -165,6 +203,25 @@ class Giant(object):
         self.lc = lc
         self.mask = mask
         return lc
+
+
+    def _fetch_and_clean_data(self, lc_source='eleanor', **kwargs):
+        """
+
+        """
+        if lc_source == 'eleanor':
+            lcc = self.from_eleanor(**kwargs)
+            lc = lcc[1] # using corr_lc
+            time = lc.time
+            flux = lc.flux
+            flux_err = np.ones_like(flux) * 1e-5
+            lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
+
+        elif lc_source == 'lightkurve':
+            lc = self.from_lightkurve()
+
+        lc = self._clean_data(lc)
+
 
     def vet_transit(self, lc=None, tpf=None, **kwargs):
         """
@@ -445,7 +502,7 @@ class Giant(object):
 
         fitT = self.build_ktransit_model(ticid=ticid, lc=lc, rprs=rprs)
 
-        fitT.print_results()            # print some results
+        # fitT.print_results()            # print some results
         res = fitT.fitresultplanets
         res2 = fitT.fitresultstellar
 
@@ -479,13 +536,38 @@ class Giant(object):
 
         plt.show()
 
+    def simple_pca(self, tpf):
+        """
+
+        """
+        aper = tpf._parse_aperture_mask('threshold')
+        raw_lc = tpf.to_lightcurve(aperture_mask=aper).remove_nans()
+        mask = raw_lc.flux_err > 0
+        raw_lc = raw_lc[mask]
+        tpf = tpf[mask]
+
+
+        regressors = tpf.flux[:, ~aper]
+
+        dm = lk.DesignMatrix(regressors, name='regressors')
+
+        dm = dm.pca(10)
+        dm = dm.append_constant()
+
+        corrector = lk.RegressionCorrector(raw_lc)
+        corrected_lc = corrector.correct(dm)
+
+        return corrected_lc.normalize()
+
 
 if __name__ == '__main__':
     try:
         ticid = sys.argv[1]
         outdir = sys.argv[2]
 
-        target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv')
-        target.plot(outdir=outdir)
+        target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv', cache_path='/data/sarek1/nksaun/lightkurve_cache')
+        target._fetch_and_clean_data(lc_source='lightkurve')
+        # target.plot(outdir=outdir)
+        plot_summary(target, outdir=outdir, save_data=True)
     except:
-        print(f'No data found for target {sys.argv[1]}')
+        print(f'Target {sys.argv[1]} failed.')
