@@ -429,6 +429,7 @@ def plot_summary(target, outdir=None, save_data=False):
     result = ktransit_model.fitresult[1:]
     kt_period = result[0]
     kt_t0 = result[2]
+    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
     plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
 
     ax = plt.subplot2grid(dims, (16,6), colspan=6, rowspan=1)
@@ -436,7 +437,7 @@ def plot_summary(target, outdir=None, save_data=False):
     plt.subplots_adjust(hspace=0)
 
     ax = plt.subplot2grid(dims, (19,0), colspan=12, rowspan=1)
-    plot_table(model_lc, ktransit_model, depth_snr, ax)
+    plot_table(model_lc, ktransit_model, depth_snr, dur, ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
@@ -601,12 +602,11 @@ def plot_even(lc, period, t0, depth, ax):
     plt.grid(True)
 
 def plot_tpf(target, ax):
-    ax = target.tpf.plot(ax=ax, show_colorbar=False)
+    ax = target.tpf.plot(ax=ax, show_colorbar=False, frame=100)
     ax = add_gaia_figure_elements(target.tpf, ax)
 
-def plot_table(model_lc, ktransit_model, depth_snr, ax):
+def plot_table(model_lc, ktransit_model, depth_snr, dur, ax):
     result = ktransit_model.fitresult[1:]
-    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
 
     col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR']
     values = [f'{val:.3f}' for val in result]
