@@ -601,7 +601,7 @@ def plot_even(lc, period, t0, depth, ax):
     plt.grid(True)
 
 def plot_tpf(target, ax):
-    ax = target.tpf.plot(ax=ax, title='', show_colorbar=False)
+    ax = target.tpf.plot(ax=ax, show_colorbar=False)
     ax = add_gaia_figure_elements(target.tpf, ax)
 
 def plot_table(model_lc, ktransit_model, depth_snr, ax):
