@@ -397,7 +397,8 @@ def plot_summary(target, outdir=None, save_data=False):
 
     ax = plt.subplot2grid(dims, (0,0), colspan=12, rowspan=3)
     plot_raw_lc(target, ax)
-    plt.title('TIC 176956893')
+    param_string = stellar_params(target)
+    plt.title(f'TIC {target.ticid}, ' + param_string)
 
     ax = plt.subplot2grid(dims, (4,6), colspan=6, rowspan=2)
     bls_results = get_bls_results(target.lc)
@@ -437,7 +438,7 @@ def plot_summary(target, outdir=None, save_data=False):
     plt.subplots_adjust(hspace=0)
 
     ax = plt.subplot2grid(dims, (19,0), colspan=12, rowspan=1)
-    plot_table(model_lc, ktransit_model, depth_snr, dur, ax)
+    plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
@@ -605,7 +606,7 @@ def plot_tpf(target, ax):
     ax = target.tpf.plot(ax=ax, show_colorbar=False, frame=100)
     ax = add_gaia_figure_elements(target.tpf, ax)
 
-def plot_table(model_lc, ktransit_model, depth_snr, dur, ax):
+def plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax):
     result = ktransit_model.fitresult[1:]
 
     col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR']
@@ -616,6 +617,34 @@ def plot_table(model_lc, ktransit_model, depth_snr, dur, ax):
     ax.axis('tight')
     ax.axis('off')
     ax.table(cellText=[values], colLabels=col_labels, loc='center')
+
+def stellar_params(target):
+    from astroquery.mast import Catalogs
+    catalog_data = Catalogs.query_criteria(objectname=f'TIC {target.ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
+
+    ra = catalog_data['ra'][0]
+    dec = catalog_data['dec'][0]
+    coords = f'({ra:.2f}, {dec:.2f})'
+    rstar = catalog_data['rad'][0]
+    teff = catalog_data['Teff'][0]
+    if np.isnan(rstar):
+        rstar = '?'
+    else:
+        rstar = f'{rstar:.2f}'
+    if np.isnan(teff):
+        teff = '?'
+    else:
+        teff = f'{teff:.0f}'
+    logg = catalog_data['logg'][0]
+    if np.isnan(logg):
+        logg = '?'
+    else:
+        logg = f'{logg:.2f}'
+    V = catalog_data['Vmag'][0]
+
+    param_string = rf'(RA, dec)={coords}, R_star={rstar} $R_\odot$, logg={logg}, Teff={teff} K, V={V:.2f}'
+
+    return param_string
 
 def superplot(lc, ticid, breakpoints, target_list, save_data=False, outdir=None):
     """
