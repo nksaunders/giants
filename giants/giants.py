@@ -43,6 +43,7 @@ class Giant(object):
         self.lc_exists = False
         self.ticid = ticid
         self.cache_path = cache_path
+        self.silent = False
         if isinstance(self.ticid, str):
             self.ticid = int(re.search(r'\d+', str(self.ticid)).group())
 
@@ -86,7 +87,8 @@ class Giant(object):
 
         # search TESScut to figure out which sectors you need (there's probably a better way to do this)
         sectors = self._find_sectors(self.ticid)
-        print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
+        if not self.silent:
+            print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
         # download target data for the desired source for only the first available sector
 
         star = eleanor.Source(tic=self.ticid, sector=int(sectors[0]), tc=True)
@@ -125,7 +127,8 @@ class Giant(object):
         if sectors is None:
             # search TESScut to figure out which sectors you need (there's probably a better way to do this)
             sectors = self._find_sectors(self.ticid)
-        print(f'Creating light curve for target {self.ticid} for sector(s) {sectors}.')
+        if not self.silent:
+            print(f'Creating light curve for target {self.ticid} for sector(s) {sectors}.')
 
         search = lk.search_tesscut(f'TIC {self.ticid}', sector=sectors)
         tpfc = lk.TargetPixelFileCollection([])
@@ -502,7 +505,6 @@ class Giant(object):
 
         fitT = self.build_ktransit_model(ticid=ticid, lc=lc, rprs=rprs)
 
-        # fitT.print_results()            # print some results
         res = fitT.fitresultplanets
         res2 = fitT.fitresultstellar
 
@@ -563,6 +565,8 @@ class Giant(object):
         """
 
         """
+        self.silent = True
+        
         if outdir is None:
             outdir = os.path.join(self.PACKAGEDIR, 'outputs')
 
