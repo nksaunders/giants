@@ -569,18 +569,18 @@ class Giant(object):
         sectors = self._find_sectors(self.ticid)
 
         for s in sectors:
-            target._fetch_and_clean_data(lc_source='lightkurve', sectors=s, gauss_filter_lc=False)
+            self._fetch_and_clean_data(lc_source='lightkurve', sectors=s, gauss_filter_lc=False)
 
-            fname_corr = f'{target.ticid}_s{s:02d}_corr.fits'
-            fname_raw = f'{target.ticid}_s{s:02d}_raw.fits'
+            fname_corr = f'{self.ticid}_s{s:02d}_corr.fits'
+            fname_raw = f'{self.ticid}_s{s:02d}_raw.fits'
 
             path_corr = os.path.join(outdir, fname_corr)
             path_raw = os.path.join(outdir, fname_raw)
 
-            target.lc.flux += 1.
+            self.lc.flux += 1.
 
-            target.lc.to_fits(path=path_corr, overwrite=True)
-            target.raw_lc.to_fits(path=path_raw, overwrite=True)
+            self.lc.to_fits(path=path_corr, overwrite=True)
+            self.raw_lc.to_fits(path=path_raw, overwrite=True)
 
 if __name__ == '__main__':
     try:
