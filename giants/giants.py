@@ -118,15 +118,16 @@ class Giant(object):
         # store in a LightCurveCollection object and return
         return lk.LightCurveCollection([raw_lc, corr_lc])
 
-    def from_lightkurve(self, **kwargs):
+    def from_lightkurve(self, sectors=None, **kwargs):
         """
 
         """
-        # search TESScut to figure out which sectors you need (there's probably a better way to do this)
-        sectors = self._find_sectors(self.ticid)
-        print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
+        if sectors is None:
+            # search TESScut to figure out which sectors you need (there's probably a better way to do this)
+            sectors = self._find_sectors(self.ticid)
+        print(f'Creating light curve for target {self.ticid} for sector(s) {sectors}.')
 
-        search = lk.search_tesscut(f'TIC {self.ticid}')
+        search = lk.search_tesscut(f'TIC {self.ticid}', sector=sectors)
         tpfc = lk.TargetPixelFileCollection([])
         if self.cache_path is None:
             for sector in search:
@@ -173,7 +174,7 @@ class Giant(object):
             lc = tpf.to_lightcurve(aperture_mask='threshold')
         return lc
 
-    def _clean_data(self, lc):
+    def _clean_data(self, lc, gauss_filter_lc=True):
         """ """
         # mask first 12h after momentum dump
         momdump = (lc.time > 1339) * (lc.time < 1341)
@@ -193,11 +194,10 @@ class Giant(object):
         # also 6 sigma outliers
         _, outliers = lc.remove_outliers(sigma=6, return_mask=True)
         mask = momdump | outliers | burnin
-        lc.time = lc.time[~mask]
-        lc.flux = lc.flux[~mask]
-        lc.flux_err = lc.flux_err[~mask]
+        lc = lc[~mask]
         lc.flux = lc.flux - 1
-        lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 90) # <2-day (5muHz) filter
+        if gauss_filter_lc:
+            lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 90) # <2-day (5muHz) filter
 
         # store cleaned lc
         self.lc = lc
@@ -205,7 +205,7 @@ class Giant(object):
         return lc
 
 
-    def _fetch_and_clean_data(self, lc_source='eleanor', **kwargs):
+    def _fetch_and_clean_data(self, lc_source='eleanor', sectors=None, gauss_filter_lc=True, **kwargs):
         """
 
         """
@@ -218,7 +218,7 @@ class Giant(object):
             lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
 
         elif lc_source == 'lightkurve':
-            lc = self.from_lightkurve()
+            lc = self.from_lightkurve(sectors=sectors)
 
         lc = self._clean_data(lc)
 
@@ -543,7 +543,7 @@ class Giant(object):
         aper = tpf._parse_aperture_mask('threshold')
         raw_lc = tpf.to_lightcurve(aperture_mask=aper).remove_nans()
         mask = raw_lc.flux_err > 0
-        raw_lc = raw_lc[mask]
+        self.raw_lc = raw_lc[mask]
         tpf = tpf[mask]
 
 
@@ -554,20 +554,50 @@ class Giant(object):
         dm = dm.pca(10)
         dm = dm.append_constant()
 
-        corrector = lk.RegressionCorrector(raw_lc)
+        corrector = lk.RegressionCorrector(self.raw_lc)
         corrected_lc = corrector.correct(dm)
 
         return corrected_lc.normalize()
 
+    def save_to_fits(self, outdir=None):
+        """
+
+        """
+        if outdir is None:
+            outdir = os.path.join(self.PACKAGEDIR, 'outputs')
+
+        sectors = self._find_sectors(self.ticid)
+
+        for s in sectors:
+            target._fetch_and_clean_data(lc_source='lightkurve', sectors=s, gauss_filter_lc=False)
+
+            fname_corr = f'{target.ticid}_s{s:02d}_corr.fits'
+            fname_raw = f'{target.ticid}_s{s:02d}_raw.fits'
+
+            path_corr = os.path.join(outdir, fname_corr)
+            path_raw = os.path.join(outdir, fname_raw)
+
+            target.lc.flux += 1.
+
+            target.lc.to_fits(path=path_corr, overwrite=True)
+            target.raw_lc.to_fits(path=path_raw, overwrite=True)
 
 if __name__ == '__main__':
     try:
         ticid = sys.argv[1]
         outdir = sys.argv[2]
+        output = "plot"
+        try:
+            output = sys.argv[3]
+        except:
+            pass
 
         target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv', cache_path='/data/sarek1/nksaun/lightkurve_cache')
-        target._fetch_and_clean_data(lc_source='lightkurve')
-        # target.plot(outdir=outdir)
-        plot_summary(target, outdir=outdir, save_data=True)
+
+        if output=="plot":
+            target._fetch_and_clean_data(lc_source='lightkurve')
+            plot_summary(target, outdir=outdir, save_data=True)
+        else:
+            target.save_to_fits(outdir=outdir)
     except:
         print(f'Target {sys.argv[1]} failed.')
