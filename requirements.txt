@@ -2,9 +2,9 @@ numpy
 astropy
 matplotlib
 eleanor
-scipy
+lightkurve
 astroquery
 pandas
 astropy
-lightkurve
 sklearn
+ktransit

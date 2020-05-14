@@ -52,7 +52,14 @@ class Giant(object):
         """
         self.PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
         path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
-        return pd.read_csv(path, skiprows=0, dtype='unicode')
+        try:
+            path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
+            table = pd.read_csv(path, skiprows=0, dtype='unicode')
+        except:
+            csv_path = 'data/TICgiants_bright.csv'
+            path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
+            table = pd.read_csv(path, skiprows=0, dtype='unicode')
+        return table
 
     def get_target_list(self):
         """Helper function to fetch a list of TIC IDs.
@@ -556,17 +563,17 @@ class Giant(object):
         dm = dm.pca(10)
         dm = dm.append_constant()
 
-        corrector = lk.RegressionCorrector(self.raw_lc)
+        corrector = lk.RegressionCorrector(self.raw_lc.normalize())
         corrected_lc = corrector.correct(dm)
 
-        return corrected_lc.normalize()
+        return corrected_lc
 
     def save_to_fits(self, outdir=None):
         """
 
         """
         self.silent = True
-        
+
         if outdir is None:
             outdir = os.path.join(self.PACKAGEDIR, 'outputs')
 
