@@ -168,26 +168,18 @@ class Giant(object):
         """Helper function to read sectors from a search result."""
         # from astroquery.mast import Tesscut
         sectors = []
-        # for s in Tesscut().get_sectors(objectname=ticid)['sector']:
-        #     sectors.append(s)
+
         search_result = lk.search_tesscut(f'TIC {ticid}')
         for sector in search_result.table['description']:
             sectors.append(int(re.search(r'\d+', sector).group()))
         return sectors
 
-    def _photometry(self, tpf, method=None, use_gp=False):
-        """Helper function to perform photometry on a pixel level observation."""
-        if method=='pld':
-            pld = tpf.to_corrector('pld')
-            lc = pld.correct(aperture_mask='threshold', pld_aperture_mask='all', use_gp=False)
-        else:
-            lc = tpf.to_lightcurve(aperture_mask='threshold')
-        return lc
 
     def _clean_data(self, lc, gauss_filter_lc=True):
         """ """
         # mask first 12h after momentum dump
         momdump = (lc.time > 1339) * (lc.time < 1341)
+
         # also the burn in
         burnin = np.zeros_like(lc.time, dtype=bool)
         burnin[:30] = True
@@ -207,7 +199,7 @@ class Giant(object):
         lc = lc[~mask]
         lc.flux = lc.flux - 1
         if gauss_filter_lc:
-            lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 90) # <2-day (5muHz) filter
+            lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 120) # <2-day (5muHz) filter
 
         # store cleaned lc
         self.lc = lc
@@ -592,6 +584,9 @@ class Giant(object):
 
             self.lc.to_fits(path=path_corr, overwrite=True)
             self.raw_lc.to_fits(path=path_raw, overwrite=True)
+
+
+
 
 if __name__ == '__main__':
     try:
