@@ -52,13 +52,8 @@ class Giant(object):
         """
         self.PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
         path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
-        try:
-            path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
-            table = pd.read_csv(path, skiprows=0, dtype='unicode')
-        except:
-            csv_path = 'data/TICgiants_bright.csv'
-            path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
-            table = pd.read_csv(path, skiprows=0, dtype='unicode')
+        table = pd.read_csv(path, skiprows=3, dtype='unicode')
+
         return table
 
     def get_target_list(self):
