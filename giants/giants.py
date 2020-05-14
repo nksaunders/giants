@@ -199,7 +199,7 @@ class Giant(object):
         lc = lc[~mask]
         lc.flux = lc.flux - 1
         if gauss_filter_lc:
-            lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 120) # <2-day (5muHz) filter
+            lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 100) # <2-day (5muHz) filter
 
         # store cleaned lc
         self.lc = lc

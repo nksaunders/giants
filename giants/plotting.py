@@ -387,7 +387,8 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     """
 
     """
-
+    print("Generating plot summary for TIC {target.ticid}.\n"
+          "This may take a few minutes.")
     if outdir is None:
         outdir = os.path.join(target.PACKAGEDIR, 'outputs')
 
