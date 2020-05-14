@@ -383,7 +383,7 @@ def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=
     # return the light curve
     return system.lightcurve
 
-def plot_summary(target, outdir=None, save_data=False):
+def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     """
 
     """
@@ -452,7 +452,8 @@ def plot_summary(target, outdir=None, save_data=False):
         with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
             file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur}\n")
 
-    fig.savefig(str(outdir)+'/plots/'+str(target.ticid)+'_summary.png')
+    if save_fig:
+        fig.savefig(str(outdir)+'/plots/'+str(target.ticid)+'_summary.png')
 
 def fit_transit_model(target):
     """
