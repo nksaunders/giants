@@ -16,10 +16,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 import eleanor
 try:
     from . import lomb
+    from . import PACKAGEDIR
     from .plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, plot_summary
     from .utils import get_cutout
 except:
     import lomb
+    import PACKAGEDIR
     from plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, plot_summary
     from utils import get_cutout
 
@@ -43,6 +45,7 @@ class Giant(object):
             self.target_list = []
         else:
             self.target_list = self.get_targets(csv_path)
+        self.PACKAGEDIR = PACKAGEDIR
         self.lc_exists = False
         self.ticid = ticid
         self.cache_path = cache_path
@@ -53,7 +56,6 @@ class Giant(object):
     def get_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
         """Read in a csv of CVZ targets from a local file.
         """
-        self.PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
         path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
         table = pd.read_csv(path, skiprows=3, dtype='unicode')
 
@@ -213,7 +215,7 @@ class Giant(object):
         return lc
 
 
-    def _fetch_and_clean_data(self, lc_source='eleanor', sectors=None, gauss_filter_lc=True, **kwargs):
+    def fetch_and_clean_data(self, lc_source='eleanor', sectors=None, gauss_filter_lc=True, **kwargs):
         """
 
         """
@@ -578,7 +580,7 @@ class Giant(object):
         sectors = self._find_sectors(self.ticid)
 
         for s in sectors:
-            self._fetch_and_clean_data(lc_source='lightkurve', sectors=s, gauss_filter_lc=False)
+            self.fetch_and_clean_data(lc_source='lightkurve', sectors=s, gauss_filter_lc=False)
 
             fname_corr = f'{self.ticid}_s{s:02d}_corr.fits'
             fname_raw = f'{self.ticid}_s{s:02d}_raw.fits'
@@ -604,7 +606,7 @@ if __name__ == '__main__':
         target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv', cache_path='/data/sarek1/nksaun/lightkurve_cache')
 
         if output=="plot":
-            target._fetch_and_clean_data(lc_source='lightkurve')
+            target.fetch_and_clean_data(lc_source='lightkurve')
             plot_summary(target, outdir=outdir, save_data=True)
         else:
             target.save_to_fits(outdir=outdir)
