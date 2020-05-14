@@ -30,6 +30,8 @@ try:
 except:
     print('ICA not available.')
 
+__all__ = ['plot_summary']
+
 def make_ica_plot(tic, tpf=None):
     """
     """
