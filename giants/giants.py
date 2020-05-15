@@ -82,15 +82,6 @@ class Giant(object):
         LightCurveCollection :
             ~lightkurve.LightCurveCollection containing raw and corrected light curves.
         """
-        '''
-        # BUGFIX FOR ELEANOR (DEPRICATED)
-        # -------------------------------
-        from astroquery.mast import Observations
-        server = 'https://mast.stsci.edu'
-        Observations._MAST_REQUEST_URL = server + "/api/v0/invoke"
-        Observations._MAST_DOWNLOAD_URL = server + "/api/v0.1/Download/file"
-        Observations._COLUMNS_CONFIG_URL = server + "/portal/Mashup/Mashup.asmx/columnsconfig"
-        '''
 
         # search TESScut to figure out which sectors you need (there's probably a better way to do this)
         sectors = self._find_sectors(self.ticid)
@@ -129,7 +120,18 @@ class Giant(object):
 
     def from_lightkurve(self, sectors=None, **kwargs):
         """
+        Use `lightkurve.search_tesscut` to query and download TESSCut 11x11 cutout for target.
+        This function creates a background model and subtracts it off using `lightkurve.RegressionCorrector`.
 
+        Parameters
+        ----------
+        sectors : int, list of ints
+            desired sector number or list of sector numbers
+
+        Returns
+        -------
+        lc : `lightkurve.LightCurve` object
+            background-corrected flux time series
         """
         if sectors is None:
             # search TESScut to figure out which sectors you need (there's probably a better way to do this)
@@ -165,8 +167,7 @@ class Giant(object):
         return lc
 
     def _find_sectors(self, ticid):
-        """Helper function to read sectors from a search result."""
-        # from astroquery.mast import Tesscut
+        """Hidden function to read sectors from a search result."""
         sectors = []
 
         search_result = lk.search_tesscut(f'TIC {ticid}')
@@ -176,7 +177,7 @@ class Giant(object):
 
 
     def _clean_data(self, lc, gauss_filter_lc=True):
-        """ """
+        """Hidden function to remove common sources of noise and outliers."""
         # mask first 12h after momentum dump
         momdump = (lc.time > 1339) * (lc.time < 1341)
 
@@ -209,7 +210,17 @@ class Giant(object):
 
     def fetch_and_clean_data(self, lc_source='eleanor', sectors=None, gauss_filter_lc=True, **kwargs):
         """
+        Query and download data, remove background signal and outliers. The light curve is stored as a
+        object variable `Giant.lc`.
 
+        Parameters
+        ----------
+        lc_source : str, 'lightkurve' or 'eleanor'
+            pipeline used to access data
+        sectors : int, list of ints
+            desired sector number or list of sector numbers
+        gauss_filer_lc : bool
+            optionally apply Gaussian smoothing with a ~2 day filter (good for planets, bad for stars)
         """
         if lc_source == 'eleanor':
             lcc = self.from_eleanor(**kwargs)
@@ -227,7 +238,7 @@ class Giant(object):
 
     def vet_transit(self, lc=None, tpf=None, **kwargs):
         """
-
+        A quick vetting method using ICA.
         """
         if not self.lc_exists:
             lcc = self.from_eleanor(**kwargs)
@@ -309,7 +320,12 @@ class Giant(object):
 
     def pdf_summary(self, outdir=None):
         """
+        Generates a full PDF summary including vetting and transit model fitting.
 
+        Parameters
+        ----------
+        outdir : path or str
+            directory to store pdf output
         """
         if outdir is None:
             outdir = os.path.join(self.PACKAGEDIR, 'outputs')
@@ -397,7 +413,18 @@ class Giant(object):
         plt.show()
 
     def plot_gaia_overlay(self, ticid=None, tpf=None, cutout_size=9):
-        """Check if the source is contaminated."""
+        """
+        Check if the source is contaminated by displaying nearby Gaia targets as red circles.
+
+        Parameters
+        ----------
+        ticid : int
+            TIC ID of target
+        tpf : `lightkurve.TargetPixelFile` object
+            target pixel file on which to overplot Gaia stars
+        cutout_size : int, tuple
+            pixels on sides of tpf, tuples in form (y pixels, x pixels) accepted
+        """
         from .plotting import add_gaia_figure_elements
 
         if ticid is None:
@@ -412,7 +439,7 @@ class Giant(object):
         return fig
 
     def _estimate_duration(self, p, rs, rp, b, a):
-        """ """
+        """Hidden function to estimate duration given orbital parameters."""
 
         X = np.sqrt((rs + (rp*u.jupiterRad).to(u.solRad).value)**2 - b**2) / a
         td = (p / np.pi) * np.arcsin(X)
@@ -421,7 +448,19 @@ class Giant(object):
 
     def fit_starry_model(self, lc=None, **kwargs):
         """
+        Generate and optimize a starry ocultation model.
 
+        Parameters
+        ----------
+        lc : `lightkurve.LightCurve` object or None
+            timeseries to fit model to. uses `Giant.lc` if None
+
+        Returns
+        -------
+        model : `starry` model object
+            full `starry` model output
+        model_lc : `lightkurve.LightCurve` object
+            light curve with transit model as flux time series
         """
         from .utils import _fit
         if lc is None:
@@ -435,7 +474,19 @@ class Giant(object):
         return model, model_lc
 
     def plot_starry_model(self, lc=None, model=None, **kwargs):
-        """ """
+        """
+        Generate and optimize a starry ocultation model, and plot.
+
+        Parameters
+        ----------
+        lc : `lightkurve.LightCurve` object or None
+            timeseries to fit model to. uses `Giant.lc` if None
+
+        Returns
+        -------
+        fig : matplotlib.Figure
+            figure object with transit fit subplots
+        """
         print('Beginning starry fit...')
         if lc is None:
             lc = self.lc
@@ -496,7 +547,7 @@ class Giant(object):
         return fig
 
     def validate_ktransit(self, ticid=None, lc=None, rprs=0.02):
-        """ """
+        """Take a closer look at the ktransit fit."""
         if ticid is not None:
             lc = self.from_eleanor()[1]
             lc = self._clean_data(lc)
@@ -512,35 +563,26 @@ class Giant(object):
 
         fig.show()
 
-    def make_superplot(self, ticid, save_data=False, outdir='', **kwargs):
-        """
-
-        """
-        plt.clf()
-        fig = plt.figure(figsize=(16,8))
-
-        self.ticid = ticid
-        plt.subplot2grid((8,16),(0,0),colspan=4, rowspan=1)
-        lcc = self.from_eleanor(**kwargs)
-        for lc, label, offset in zip(lcc, ['raw', 'corr', 'pca', 'psf'], [-0.01, 0, 0.01, -.02]):
-            plt.plot(lc.time, lc.flux + offset, label=label)
-        for val in self.breakpoints:
-            plt.axvline(val, c='b', linestyle='dashed')
-        plt.legend(loc=0)
-
-        lc = lcc[1] # using corr_lc
-        time = lc.time
-        flux = lc.flux
-        flux_err = np.ones_like(flux) * 1e-5
-        lc = lk.LightCurve(time=time, flux=flux, flux_err=flux_err)
-
-        out_fig = superplot(lc, ticid, self.breakpoints, self.target_list, save_data, outdir)
-
-        plt.show()
-
     def simple_pca(self, tpf):
         """
+        De-trending algorithm for `lightkurve` version of FFI pipeline.
 
+        The steps of this de-trending are:
+         - Find a threshold aperture mask around the target
+         - Create a design matrix with column vectors from pixel-level timeseries outside of the aperture
+         - Perform Principle Component Analysis (PCA) on column vectors to find out background model vectors
+         - Fit weights to these vectors to minimize squared difference between model and observations
+         - Subtract noise model
+
+        Parameters
+        ----------
+        tpf : `lightkurve.TargetPixelFile` object
+            target pixel file for desired target
+
+        Returns
+        -------
+        corrected_lc : `lightkurve.LightCurve` object
+            background-corrected light curve
         """
         aper = tpf._parse_aperture_mask('threshold')
         raw_lc = tpf.to_lightcurve(aperture_mask=aper).remove_nans()
@@ -563,7 +605,15 @@ class Giant(object):
 
     def save_to_fits(self, outdir=None):
         """
+        Pipeline to download and de-trend a target using the `lightkurve` implememtation.
+        Downloads data, removes background, and saves as fits files. This function outputs:
+         - {TICID}_s{SECTOR}_corr.fits : corrected light curve
+         - {TICID}_s{SECTOR}_raw.fits : raw SAP flux light curve
 
+        Parameters
+        ----------
+        outdir : str or path
+            location of fits output
         """
         self.silent = True
 
@@ -585,7 +635,6 @@ class Giant(object):
 
             self.lc.to_fits(path=path_corr, overwrite=True)
             self.raw_lc.to_fits(path=path_raw, overwrite=True)
-
 
 
 
