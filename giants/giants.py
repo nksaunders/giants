@@ -41,11 +41,11 @@ class Giant(object):
     """An object to store and analyze time series data for giant stars.
     """
     def __init__(self, ticid, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv', cache_path=None):
+        self.PACKAGEDIR = PACKAGEDIR
         if (csv_path is None) or (csv_path==''):
             self.target_list = []
         else:
             self.target_list = self.get_targets(csv_path)
-        self.PACKAGEDIR = PACKAGEDIR
         self.lc_exists = False
         self.ticid = ticid
         self.cache_path = cache_path
