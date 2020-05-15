@@ -514,7 +514,7 @@ class Giant(object):
         Plot unfolded transit
         ---------------------
         '''
-        lc.scatter(ax=ax[0], , s=15, c='gray', alpha=.5, label='Corrected Flux')
+        lc.scatter(ax=ax[0], s=15, c='gray', alpha=.5, label='Corrected Flux')
         lc.bin(binsize=20).scatter(ax=ax[0], c='royalblue', s=15, alpha=.75, label='binned')
         model_lc.plot(ax=ax[0], c='C1', lw=2, label='Transit Model')
         ax[0].set_ylim([-.003, .002])
