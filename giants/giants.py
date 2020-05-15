@@ -436,6 +436,7 @@ class Giant(object):
 
     def plot_starry_model(self, lc=None, model=None, **kwargs):
         """ """
+        print('Beginning starry fit...')
         if lc is None:
             lc = self.lc
 
@@ -462,33 +463,33 @@ class Giant(object):
         Plot unfolded transit
         ---------------------
         '''
-        lc.scatter(ax=ax[0], c='k', label='Corrected Flux')
-        lc.bin(binsize=7).plot(ax=ax[0], c='b', lw=1.5, alpha=.75, label='binned')
-        model_lc.plot(ax=ax[0], c='r', lw=2, label='Transit Model')
-        ax[0].set_ylim([-.002, .002])
+        lc.scatter(ax=ax[0], , s=15, c='gray', alpha=.5, label='Corrected Flux')
+        lc.bin(binsize=20).scatter(ax=ax[0], c='royalblue', s=15, alpha=.75, label='binned')
+        model_lc.plot(ax=ax[0], c='C1', lw=2, label='Transit Model')
+        ax[0].set_ylim([-.003, .002])
         ax[0].set_xlim([lc.time[0], lc.time[-1]])
 
         '''
         Plot folded transit
         -------------------
         '''
-        lc.fold(period, t0).scatter(ax=ax[1], c='k', label=rf'$P={period:.3f}, t0={t0:.3f}, '
+        lc.fold(period, t0).scatter(ax=ax[1], s=15, c='gray', alpha=.5, label=rf'$P={period:.3f}, t0={t0:.3f}, '
                                                              rf'R_p={r_pl:.3f} R_J, b={b:.3f}, '
                                                              rf'\tau_T$={dur:.3f} days ({dur * 24:.3f} hrs)')
-        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[1], c='b', alpha=.75, lw=2)
-        model_lc.fold(period, t0).plot(ax=ax[1], c='r', lw=2)
+        lc.fold(period, t0).bin(binsize=20).scatter(ax=ax[1], c='royalblue', alpha=.75, size=15)
+        model_lc.fold(period, t0).plot(ax=ax[1], c='C1', lw=2)
         ax[1].set_xlim([-0.5, .5])
-        ax[1].set_ylim([-.002, .002])
+        ax[1].set_ylim([-.003, .002])
 
         '''
         Zoom folded transit
         -------------------
         '''
-        lc.fold(period, t0).scatter(ax=ax[2], c='k', label=f'folded at {period:.3f} days')
-        lc.fold(period, t0).bin(binsize=7).plot(ax=ax[2], c='b', alpha=.75, lw=2)
-        model_lc.fold(period, t0).plot(ax=ax[2], c='r', lw=2, label="transit Model")
+        lc.fold(period, t0).scatter(ax=ax[2], s=15, c='gray', alpha=.5 label=f'folded at {period:.3f} days')
+        lc.fold(period, t0).scatter(binsize=20).plot(ax=ax[2], c='royalblue', alpha=.75, s=15)
+        model_lc.fold(period, t0).plot(ax=ax[2], c='C1', lw=2, label="transit Model")
         ax[2].set_xlim([-0.1, 0.1])
-        ax[2].set_ylim([-.0015, .0015])
+        ax[2].set_ylim([-.003, .002])
 
         ax[0].set_title(f'{self.ticid}', fontsize=14)
 

@@ -180,6 +180,7 @@ def _fit(x, y, yerr, ticid=None, target_list=None, period_prior=None, t0_prior=N
         return model
 
     # build our initial model and store a static version of the output for plotting
+    print('Optimizing fit...')
     model = build_model(x, y, yerr, period_prior, t0_prior, depth, **kwargs)
     with model:
         mean = model.map_soln["mean"]
