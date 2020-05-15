@@ -514,8 +514,8 @@ class Giant(object):
         Plot unfolded transit
         ---------------------
         '''
-        lc.scatter(ax=ax[0], s=15, c='gray', alpha=.35, label='Corrected Flux')
-        lc.bin(binsize=20).scatter(ax=ax[0], c='royalblue', s=25, alpha=.75, label='binned')
+        lc.scatter(ax=ax[0], s=30, c='gray', alpha=.35, label='Corrected Flux')
+        lc.bin(binsize=20).scatter(ax=ax[0], c='royalblue', s=50, alpha=.75, label='binned')
         model_lc.plot(ax=ax[0], c='C1', lw=2, label='Transit Model')
         ax[0].set_ylim([-.003, .002])
         ax[0].set_xlim([lc.time[0], lc.time[-1]])
@@ -524,10 +524,10 @@ class Giant(object):
         Plot folded transit
         -------------------
         '''
-        lc.fold(period, t0).scatter(ax=ax[1], s=15, c='gray', alpha=.35, label=rf'$P={period:.3f}, t0={t0:.3f}, '
+        lc.fold(period, t0).scatter(ax=ax[1], s=30, c='gray', alpha=.35, label=rf'$P={period:.3f}, t0={t0:.3f}, '
                                                              rf'R_p={r_pl:.3f} R_J, b={b:.3f}, '
                                                              rf'\tau_T$={dur:.3f} days ({dur * 24:.3f} hrs)')
-        lc.fold(period, t0).bin(binsize=20).scatter(ax=ax[1], c='royalblue', alpha=.75, s=25)
+        lc.fold(period, t0).bin(binsize=20).scatter(ax=ax[1], c='royalblue', alpha=.75, s=50)
         model_lc.fold(period, t0).plot(ax=ax[1], c='C1', lw=2)
         ax[1].set_xlim([-0.5, .5])
         ax[1].set_ylim([-.003, .002])
@@ -536,8 +536,8 @@ class Giant(object):
         Zoom folded transit
         -------------------
         '''
-        lc.fold(period, t0).scatter(ax=ax[2], s=15, c='gray', alpha=.35, label=f'folded at {period:.3f} days')
-        lc.fold(period, t0).scatter(binsize=20).plot(ax=ax[2], c='royalblue', alpha=.75, s=25)
+        lc.fold(period, t0).scatter(ax=ax[2], s=30, c='gray', alpha=.35, label=f'folded at {period:.3f} days')
+        lc.fold(period, t0).bin(binsize=20).scatter(ax=ax[2], c='royalblue', alpha=.75, s=50)
         model_lc.fold(period, t0).plot(ax=ax[2], c='C1', lw=2, label="transit Model")
         ax[2].set_xlim([-0.1, 0.1])
         ax[2].set_ylim([-.003, .002])
