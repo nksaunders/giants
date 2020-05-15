@@ -536,7 +536,7 @@ class Giant(object):
         Zoom folded transit
         -------------------
         '''
-        lc.fold(period, t0).scatter(ax=ax[2], s=15, c='gray', alpha=.5 label=f'folded at {period:.3f} days')
+        lc.fold(period, t0).scatter(ax=ax[2], s=15, c='gray', alpha=.5, label=f'folded at {period:.3f} days')
         lc.fold(period, t0).scatter(binsize=20).plot(ax=ax[2], c='royalblue', alpha=.75, s=15)
         model_lc.fold(period, t0).plot(ax=ax[2], c='C1', lw=2, label="transit Model")
         ax[2].set_xlim([-0.1, 0.1])
