@@ -8,6 +8,9 @@ Notebooks/plots/
 Notebooks/
 *.py[cod]
 
+*.icloud
+*/*.icloud
+
 # C extensions
 *.so
 
