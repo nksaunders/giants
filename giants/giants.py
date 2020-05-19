@@ -21,9 +21,9 @@ try:
     from .utils import get_cutout
 except:
     import lomb
-    import PACKAGEDIR
     from plotting import plot_quicklook, plot_transit_vetting, make_ica_plot, plot_summary
     from utils import get_cutout
+    PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
 #optional imports
 try:
@@ -156,10 +156,14 @@ class Giant(object):
 
         self.tpf = tpfc[0]
         lc = self.simple_pca(self.tpf)
+
+        # store as LCC for plotting later
+        self.lcc = lk.LightCurveCollection([lc])
         self.breakpoints = [lc.time[-1]]
         for tpf in tpfc[1:]:
             new_lc = self.simple_pca(tpf)
             self.breakpoints.append(new_lc.time[-1])
+            self.lcc.append(new_lc)
             lc = lc.append(new_lc)
 
         self.lc = lc
