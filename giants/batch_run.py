@@ -2,7 +2,7 @@
 Script to run a batch of TIC IDs.
 """
 
-
+import sys
 try:
     from .giants import Giant
 except:
