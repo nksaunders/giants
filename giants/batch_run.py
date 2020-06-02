@@ -14,21 +14,21 @@ def save_fits_file(ticid):
         target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv',
                          cache_path='/data/sarek1/nksaun/lightkurve_cache')
 
-        target.save_to_fits(outdir='/data/sarek1/nksaun/tess_giants/zinn_lcs')
+        target.save_to_fits(outdir='/data/sarek1/nksaun/tess_giants/tayar_lcs')
 
     except:
         try:
             target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv',
                              cache_path='/data/sarek1/nksaun/lightkurve_cache')
 
-            target.save_to_fits(outdir='/data/sarek1/nksaun/tess_giants/zinn_lcs')
+            target.save_to_fits(outdir='/data/sarek1/nksaun/tayar_giants/zinn_lcs')
 
         except:
             try:
                 target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv',
                                  cache_path='/data/sarek1/nksaun/lightkurve_cache')
 
-                target.save_to_fits(outdir='/data/sarek1/nksaun/tess_giants/zinn_lcs')
+                target.save_to_fits(outdir='/data/sarek1/nksaun/tayar_giants/zinn_lcs')
             except:
                 pass
 
