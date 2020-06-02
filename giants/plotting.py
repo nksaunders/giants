@@ -536,7 +536,7 @@ def plot_fft(lc, ax=None):
 
 def get_bls_results(lc):
     model = BoxLeastSquares(lc.time, lc.flux)
-    results = model.autopower(0.16, minimum_period=2., maximum_period=21.)
+    results = model.autopower(0.16, minimum_period=1., maximum_period=21.)
     return results
 
 def plot_bls(lc, ax, results=None):

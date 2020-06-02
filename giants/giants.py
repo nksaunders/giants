@@ -237,7 +237,7 @@ class Giant(object):
         elif lc_source == 'lightkurve':
             lc = self.from_lightkurve(sectors=sectors)
 
-        lc = self._clean_data(lc)
+        lc = self._clean_data(lc, gauss_filter_lc=gauss_filter_lc)
 
 
     def vet_transit(self, lc=None, tpf=None, **kwargs):
