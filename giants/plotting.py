@@ -13,15 +13,15 @@ import lightkurve as lk
 import warnings
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
-import ktransit
+# import ktransit
 import matplotlib.ticker as mtick
 import eleanor
 try:
     from . import lomb
-    from .utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
+    # from .utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
 except:
     import lomb
-    from utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
+    # from utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
 
 
 #optional imports
@@ -429,19 +429,19 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     plt.subplots_adjust(hspace=0)
 
     ax = plt.subplot2grid(dims, (13,6), colspan=6, rowspan=3)
-    model_lc, ktransit_model = fit_transit_model(target)
-    result = ktransit_model.fitresult[1:]
-    kt_period = result[0]
-    kt_t0 = result[2]
-    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
-    plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
+    # model_lc, ktransit_model = fit_transit_model(target)
+    # result = ktransit_model.fitresult[1:]
+    # kt_period = result[0]
+    # kt_t0 = result[2]
+    # dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
+    # plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
 
-    ax = plt.subplot2grid(dims, (16,6), colspan=6, rowspan=1)
-    plot_tr_bottom(target.lc, model_lc, kt_period, kt_t0, ax)
-    plt.subplots_adjust(hspace=0)
+    # ax = plt.subplot2grid(dims, (16,6), colspan=6, rowspan=1)
+    # plot_tr_bottom(target.lc, model_lc, kt_period, kt_t0, ax)
+    # plt.subplots_adjust(hspace=0)
 
-    ax = plt.subplot2grid(dims, (19,0), colspan=12, rowspan=1)
-    plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax)
+    # ax = plt.subplot2grid(dims, (19,0), colspan=12, rowspan=1)
+    # plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
