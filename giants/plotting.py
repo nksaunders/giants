@@ -519,7 +519,7 @@ def plot_fft(lc, ax=None):
     bin = freq[1] - freq[0]
     fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
 
-    use = np.where(freq < nyq + 150)
+    use = np.where(freq.value < nyq + 150)
     freq = freq[use]
     fts = fts[use]
 
