@@ -556,10 +556,10 @@ def plot_bls(lc, ax, results=None):
     ax.set_ylabel("log likelihood")
 
     # Highlight the harmonics of the peak period
-    ax.axvline(period, alpha=0.4, lw=4)
+    ax.axvline(period.value, alpha=0.4, lw=4)
     for n in range(2, 10):
-        ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed")
-        ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed")
+        ax.axvline(n*period.value, alpha=0.4, lw=1, linestyle="dashed")
+        ax.axvline(period.value / n, alpha=0.4, lw=1, linestyle="dashed")
 
 def plot_folded(lc, period, t0, depth, ax):
 
