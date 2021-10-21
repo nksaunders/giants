@@ -14,6 +14,8 @@ import astropy.units as u
 # import ktransit
 from matplotlib.backends.backend_pdf import PdfPages
 from tess_stars2px import tess_stars2px_function_entry
+import astrocut
+from astrocut import CutoutFactory
 # import eleanor
 try:
     from . import lomb
