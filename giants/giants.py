@@ -57,7 +57,7 @@ class Giant(object):
         """Read in a csv of CVZ targets from a local file.
         """
         path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
-        table = pd.read_csv(path, skiprows=3, dtype='unicode')
+        table = pd.read_csv(path, skiprows=0, dtype='unicode')
 
         return table
 
