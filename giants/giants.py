@@ -248,7 +248,7 @@ class Giant(object):
     def _clean_data(self, lc, gauss_filter_lc=True):
         """Hidden function to remove common sources of noise and outliers."""
         # mask first 12h after momentum dump
-        momdump = (lc.time > 1339) * (lc.time < 1341)
+        momdump = (lc.time.value > 1339) * (lc.time.value < 1341)
 
         # also the burn in
         burnin = np.zeros_like(lc.time, dtype=bool)
