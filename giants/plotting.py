@@ -551,7 +551,7 @@ def plot_bls(lc, ax, results=None):
     depth_snr = results.depth_snr[np.argmax(results.power)]
 
     ax.plot(results.period, results.power, "k", lw=0.5)
-    ax.set_xlim(results.period.min(), results.period.max())
+    ax.set_xlim(results.period.min().value, results.period.max().value)
     ax.set_xlabel("period [days]")
     ax.set_ylabel("log likelihood")
 
