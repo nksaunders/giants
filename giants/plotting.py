@@ -416,7 +416,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     freq, fts = plot_fft(target.lc, ax)
 
     ax = plt.subplot2grid(dims, (4,0), colspan=5, rowspan=2)
-    plot_folded(target.lc, period, t0, depth, ax)
+    plot_folded(target.lc, period.value, t0.value, depth, ax)
 
     ax = plt.subplot2grid(dims, (7,0), colspan=5, rowspan=5)
     plot_tpf(target, ax)
