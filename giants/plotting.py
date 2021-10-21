@@ -569,7 +569,7 @@ def plot_folded(lc, period, t0, depth, ax):
     time, flux, flux_err = lc.time, lc.flux, lc.flux_err
 
     phase = (t0 % period) / period
-    foldedtimes = (((time - phase * period) / period) % 1)
+    foldedtimes = (((time.value - phase * period) / period) % 1)
     foldedtimes[foldedtimes > 0.5] -= 1
     foldtimesort = np.argsort(foldedtimes)
     foldfluxes = flux[foldtimesort]
