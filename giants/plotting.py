@@ -400,8 +400,8 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
 
     ax = plt.subplot2grid(dims, (0,0), colspan=12, rowspan=3)
     plot_raw_lc(target, ax)
-    param_string = stellar_params(target)
-    plt.title(f'TIC {target.ticid}, ' + param_string)
+    # param_string = stellar_params(target)
+    # plt.title(f'TIC {target.ticid}, ' + param_string)
 
     ax = plt.subplot2grid(dims, (4,6), colspan=6, rowspan=2)
     bls_results = get_bls_results(target.lc)
