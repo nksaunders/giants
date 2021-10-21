@@ -227,8 +227,8 @@ class Giant(object):
     def get_target_info(self, ticid):
         """
         """
-        self.ra = target_list[self.target_list['ID'] == str(ticid)]['ra'].values[0]
-        self.dec = target_list[self.target_list['ID'] == str(ticid)]['dec'].values[0]
+        self.ra = self.target_list[self.target_list['ID'] == str(ticid)]['ra'].values[0]
+        self.dec = self.target_list[self.target_list['ID'] == str(ticid)]['dec'].values[0]
 
         return self.ra, self.dec
 
