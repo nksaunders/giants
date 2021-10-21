@@ -474,7 +474,7 @@ def plot_raw_lc(target, ax=None):
 
 
     target.lc.plot(ax=ax, c='k')
-    ax.set_xlim(target.lc.time[0], target.lc.time[-1])
+    ax.set_xlim(target.lc.time.value[0], target.lc.time.value[-1])
     for b in target.breakpoints:
         ax.axvline(b, linestyle='--', color='C1')
 
@@ -482,11 +482,11 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
     res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
 
-    depth = 0 - np.min(model_lc.flux)
+    depth = 0 - np.min(model_lc.flux.value)
 
     ax.set_xticklabels([])
     ax.set_xlim(-.1, .1)
-    ax.set_ylim(np.min(model_lc.flux)-depth*2, depth*2)
+    ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
 
     flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray')
     flux_lc.fold(per, t0).remove_outliers().bin().scatter(ax=ax, c='C1', s=10, alpha=.75)
