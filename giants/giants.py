@@ -170,6 +170,68 @@ class Giant(object):
 
         return lc
 
+    def from_local_data(self, local_data_path):
+        """
+        Download data from local data cube.
+        Data cubes should be stored in the format 's0001-1-1.fits'
+        """
+
+        ra, dec = self.get_target_info(self.ticid)
+
+        # sectors = self._find_sectors(self.ticid)
+        obs = self.fetch_obs(ra, dec)
+        sectors = obs[0]
+        if not self.silent:
+            print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
+
+        my_cutter = CutoutFactory()
+        local_data_path = '/data/users/nsaunders/cubes' # !! HACK
+        available_obs = np.array(obs).T.reshape(len(obs[0]), len(obs))
+        tpfs = []
+        for obs_ in available_obs:
+            try:
+                cube_file = os.path.join(local_data_path,
+                                         f's{obs_[0]:04d}-{obs_[1]}-{obs_[2]}.fits')
+
+                cutout_file = my_cutter.cube_cut(cube_file, f'{self.ra} {self.dec}', 11, verbose=False)
+                tpfs.append(lk.read(cutout_file))
+            except:
+                continue
+
+        tpfc = lk.TargetPixelFileCollection(tpfs)
+
+        self.tpf = tpfc[0]
+        lc = self.simple_pca(self.tpf)
+
+        # store as LCC for plotting later
+        self.lcc = lk.LightCurveCollection([lc])
+        self.breakpoints = [lc.time[-1]]
+        for tpf in tpfc[1:]:
+            new_lc = self.simple_pca(tpf)
+            self.breakpoints.append(new_lc.time[-1])
+            self.lcc.append(new_lc)
+            lc = lc.append(new_lc)
+
+        self.lc = lc
+
+        return lc
+
+    def fetch_obs(self, ra, dec):
+
+        outID, outEclipLong, outEclipLat, outSec, outCam, outCcd, \
+                outColPix, outRowPix, scinfo = tess_stars2px_function_entry(
+                        self.ticid, float(ra), float(dec))
+
+        return outSec, outCam, outCcd
+
+    def get_target_info(self, ticid):
+        """
+        """
+        self.ra = target_list[self.target_list['ID'] == str(ticid)]['ra'].values[0]
+        self.dec = target_list[self.target_list['ID'] == str(ticid)]['dec'].values[0]
+
+        return self.ra, self.dec
+
     def _find_sectors(self, ticid):
         """Hidden function to read sectors from a search result."""
         sectors = []
