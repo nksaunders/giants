@@ -476,7 +476,7 @@ def plot_raw_lc(target, ax=None):
     target.lc.plot(ax=ax, c='k')
     ax.set_xlim(target.lc.time.value[0], target.lc.time.value[-1])
     for b in target.breakpoints:
-        ax.axvline(b, linestyle='--', color='C1')
+        ax.axvline(b.value, linestyle='--', color='C1')
 
 def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
