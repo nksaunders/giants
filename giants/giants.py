@@ -13,6 +13,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
 # import ktransit
 from matplotlib.backends.backend_pdf import PdfPages
+from tess_stars2px import tess_stars2px_function_entry
 # import eleanor
 try:
     from . import lomb
