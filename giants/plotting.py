@@ -393,9 +393,10 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     if outdir is None:
         outdir = os.path.join(target.PACKAGEDIR, 'outputs')
 
-    font = {'family' : 'serif',
-        'size'   : 10}
+    font = {'family' : 'avenir',
+        'size'   : 11}
     matplotlib.rc('font', **font)
+    plt.style.use('seaborn-muted')
 
     dims=(20, 12)
 
@@ -647,7 +648,7 @@ def stellar_params(target):
     #     logg = f'{logg:.2f}'
     # V = catalog_data['Vmag'][0]
 
-    coords = f'({target.ra:.2f}, {target.dec:.2f})'
+    coords = f'({float(target.ra):.2f}, {float(target.dec):.2f})'
     rstar = target.target_row['rad'].values[0]
     teff = target.target_row['Teff'].values[0]
     if np.isnan(rstar):
