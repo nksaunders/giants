@@ -664,7 +664,7 @@ def stellar_params(target):
         logg = '?'
     else:
         logg = f'{logg:.2f}'
-    V = catalog_data['Vmag'].values[0]
+    V = target.target_row['Vmag'].values[0]
 
     param_string = rf'(RA, dec)={coords}, R_star={rstar} $R_\odot$, logg={logg}, Teff={teff} K, V={float(V):.2f}'
 
