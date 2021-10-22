@@ -232,7 +232,7 @@ def build_ktransit_model(ticid, lc, rprs=0.02, vary_transit=True):
     from ktransit import FitTransit
     fitT = FitTransit()
 
-    model = BoxLeastSquares(lc.time, lc.flux)
+    model = BoxLeastSquares(lc.time.value, lc.flux.value)
     results = model.autopower(0.16, minimum_period=2., maximum_period=21.)
     period = results.period[np.argmax(results.power)]
     t0 = results.transit_time[np.argmax(results.power)]
@@ -243,8 +243,8 @@ def build_ktransit_model(ticid, lc, rprs=0.02, vary_transit=True):
     fitT.add_guess_star(rho=0.022, zpt=0, ld1=0.6505,ld2=0.1041) #come up with better way to estimate this using AS
     fitT.add_guess_planet(T0=t0, period=period, impact=0.5, rprs=rprs)
 
-    ferr = np.ones_like(lc.time) * 0.00001
-    fitT.add_data(time=lc.time,flux=lc.flux,ferr=ferr)#*1e-3)
+    ferr = np.ones_like(lc.time.value) * 0.00001
+    fitT.add_data(time=lc.time.value,flux=lc.flux.value,ferr=ferr)#*1e-3)
 
     vary_star = ['zpt']      # free stellar parameters
     if vary_transit:
