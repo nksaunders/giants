@@ -499,7 +499,7 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
 def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
     res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
-    res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', c=50)
+    res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
     res_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=100, alpha=.75)
     ax.axhline(0, c='k', linestyle='dashed')
     ax.set_xlim(-.1*per, .1*per)
