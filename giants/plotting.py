@@ -478,7 +478,7 @@ def plot_raw_lc(target, ax=None):
     target.lc.plot(ax=ax, c='k')
     ax.set_xlim(target.lc.time.value[0], target.lc.time.value[-1])
     for b in target.breakpoints:
-        ax.axvline(b.value, linestyle='--', color='C1')
+        ax.axvline(b.value, linestyle='--', color='C2')
 
 def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
@@ -527,7 +527,7 @@ def plot_fft(lc, ax=None):
 
     ax.loglog(freq, fts/np.max(fts))
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='C1', lw=2.5)
-    ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='r', lw=2.5)
+    ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='C2', lw=2.5)
     ax.axvline(283,-1,1, ls='--', color='k')
     ax.set_xlabel("Frequency [uHz]")
     ax.set_ylabel("Power")
@@ -577,7 +577,7 @@ def plot_folded(lc, period, t0, depth, ax):
     foldfluxes = flux[foldtimesort]
 
     ax.plot(foldedtimes, flux, 'k.', markersize=2)
-    ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='C1')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
+    ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='C2')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
     ax.set_xlabel('Phase')
     ax.set_ylabel('Flux')
     ax.set_xlim(-0.5, 0.5)
