@@ -591,7 +591,7 @@ def plot_odd(lc, period, t0, depth, ax):
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Odd Transit')
     lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
-    ax.set_xlim(0, .5*period)
+    ax.set_xlim(0, period)
     ax.set_ylim(-3*depth, 2*depth)
 
     plt.grid(True)
@@ -603,7 +603,7 @@ def plot_even(lc, period, t0, depth, ax):
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Even Transit')
     lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
-    ax.set_xlim(-.5*period, 0)
+    ax.set_xlim(-period, 0)
     ax.set_ylim(-3*depth, 2*depth)
 
     plt.grid(True)
