@@ -491,7 +491,7 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
 
     flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
-    flux_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=100, alpha=.75)
+    flux_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=300, alpha=.75)
     model_lc.fold(per, t0).plot(ax=ax, c='k', lw=2)
 
     ax.set_ylabel('Normalized Flux')
@@ -500,7 +500,7 @@ def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
     res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
     res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
-    res_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=100, alpha=.75)
+    res_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=300, alpha=.75)
     ax.axhline(0, c='k', linestyle='dashed')
     ax.set_xlim(-.1*per, .1*per)
     ax.set_ylabel('Residuals (ppm)')
