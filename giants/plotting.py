@@ -615,7 +615,7 @@ def plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax):
 
     col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR']
     values = [f'{val:.3f}' for val in result]
-    values.append(f'{dur:.3f}')
+    values.append(f'{dur.value:.3f}')
     values.append(f'{depth_snr:.3f}')
 
     ax.axis('tight')
