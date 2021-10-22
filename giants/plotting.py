@@ -478,7 +478,7 @@ def plot_raw_lc(target, ax=None):
     target.lc.plot(ax=ax, c='k')
     ax.set_xlim(target.lc.time.value[0], target.lc.time.value[-1])
     for b in target.breakpoints:
-        ax.axvline(b.value, linestyle='--', color='C2')
+        ax.axvline(b.value, linestyle='--', color='r')
 
 def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
@@ -490,8 +490,8 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     ax.set_xlim(-.1*per, .1*per)
     ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
 
-    flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray')
-    flux_lc.fold(per, t0).remove_outliers().bin().scatter(ax=ax, c='C1', s=10, alpha=.75)
+    flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
+    flux_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=100, alpha=.75)
     model_lc.fold(per, t0).plot(ax=ax, c='k', lw=2)
 
     ax.set_ylabel('Normalized Flux')
@@ -499,8 +499,8 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
 def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
     res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
-    res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray')
-    res_lc.fold(per, t0).remove_outliers().bin().scatter(ax=ax, c='C1', s=10, alpha=.75)
+    res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', c=50)
+    res_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=100, alpha=.75)
     ax.axhline(0, c='k', linestyle='dashed')
     ax.set_xlim(-.1*per, .1*per)
     ax.set_ylabel('Residuals (ppm)')
@@ -527,7 +527,7 @@ def plot_fft(lc, ax=None):
 
     ax.loglog(freq, fts/np.max(fts))
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='C1', lw=2.5)
-    ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='C2', lw=2.5)
+    ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='r', lw=2.5)
     ax.axvline(283,-1,1, ls='--', color='k')
     ax.set_xlabel("Frequency [uHz]")
     ax.set_ylabel("Power")
@@ -577,7 +577,7 @@ def plot_folded(lc, period, t0, depth, ax):
     foldfluxes = flux[foldtimesort]
 
     ax.plot(foldedtimes, flux, 'k.', markersize=2)
-    ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='C2')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
+    ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='r')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
     ax.set_xlabel('Phase')
     ax.set_ylabel('Flux')
     ax.set_xlim(-0.5, 0.5)
@@ -590,7 +590,7 @@ def plot_odd(lc, period, t0, depth, ax):
         _, ax = plt.subplots(1)
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Odd Transit')
-    lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='C1', lw=2)
+    lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(0, .5*period)
     ax.set_ylim(-3*depth, 2*depth)
 
@@ -602,7 +602,7 @@ def plot_even(lc, period, t0, depth, ax):
         _, ax = plt.subplots(1)
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Even Transit')
-    lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='C1', lw=2)
+    lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(-.5*period, 0)
     ax.set_ylim(-3*depth, 2*depth)
 
