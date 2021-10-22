@@ -291,6 +291,8 @@ def plot_transit_vetting(ticid, period, t0, lc=None, tpf=None):
 
     tpf[100].plot(ax=fig, title='', show_colorbar=False)
     add_gaia_figure_elements(tpf, fig)
+    fig.set_xlim(tpf.column, tpf.column+11)
+    fig.set_ylim(tpf.row, tpf.row+11)
 
     fig = plt.subplot2grid((6,4),(2,0),colspan=2,rowspan=1)
     lc.fold(2*period, t0+period/2).scatter(ax=fig, c='k', label='Odd Transit')
@@ -578,7 +580,7 @@ def plot_folded(lc, period, t0, depth, ax):
     ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='C1')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
     ax.set_xlabel('Phase')
     ax.set_ylabel('Flux')
-    ax.set_xlim(-0.5*period, 0.5*period)
+    ax.set_xlim(-0.5, 0.5)
     ax.set_ylim(-3*depth, 2*depth)
     plt.grid(True)
 
@@ -588,7 +590,7 @@ def plot_odd(lc, period, t0, depth, ax):
         _, ax = plt.subplots(1)
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Odd Transit')
-    lc.fold(2*period, t0+period/2).bin(10).plot(ax=ax, c='C1', lw=2)
+    lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='C1', lw=2)
     ax.set_xlim(0, .5*period)
     ax.set_ylim(-3*depth, 2*depth)
 
@@ -600,7 +602,7 @@ def plot_even(lc, period, t0, depth, ax):
         _, ax = plt.subplots(1)
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Even Transit')
-    lc.fold(2*period, t0+period/2).bin(10).plot(ax=ax, c='C1', lw=2)
+    lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='C1', lw=2)
     ax.set_xlim(-.5*period, 0)
     ax.set_ylim(-3*depth, 2*depth)
 
