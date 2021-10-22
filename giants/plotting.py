@@ -393,7 +393,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     if outdir is None:
         outdir = os.path.join(target.PACKAGEDIR, 'outputs')
 
-    font = {'family' : 'avenir',
+    font = {'family' : 'sans',
         'size'   : 11}
     matplotlib.rc('font', **font)
     plt.style.use('seaborn-muted')
@@ -649,21 +649,21 @@ def stellar_params(target):
     # V = catalog_data['Vmag'][0]
 
     coords = f'({float(target.ra):.2f}, {float(target.dec):.2f})'
-    rstar = target.target_row['rad'].values[0]
-    teff = target.target_row['Teff'].values[0]
+    rstar = float(target.target_row['rad'].values[0])
+    teff = float(target.target_row['Teff'].values[0])
     if np.isnan(rstar):
         rstar = '?'
     else:
-        rstar = f'{float(rstar):.2f}'
+        rstar = f'{rstar:.2f}'
     if np.isnan(teff):
         teff = '?'
     else:
-        teff = f'{float(teff):.0f}'
-    logg = target.target_row['logg'].values[0]
+        teff = f'{teff:.0f}'
+    logg = float(target.target_row['logg'].values[0])
     if np.isnan(logg):
         logg = '?'
     else:
-        logg = f'{float(logg):.2f}'
+        logg = f'{logg:.2f}'
     V = catalog_data['Vmag'].values[0]
 
     param_string = rf'(RA, dec)={coords}, R_star={rstar} $R_\odot$, logg={logg}, Teff={teff} K, V={float(V):.2f}'
