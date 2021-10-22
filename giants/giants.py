@@ -179,10 +179,10 @@ class Giant(object):
         Data cubes should be stored in the format 's0001-1-1.fits'
         """
 
-        ra, dec = self.get_target_info(self.ticid)
+        self.get_target_info(self.ticid)
 
         # sectors = self._find_sectors(self.ticid)
-        obs = self.fetch_obs(ra, dec)
+        obs = self.fetch_obs(self.ra, self.dec)
         sectors = obs[0]
         if not self.silent:
             print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
@@ -230,10 +230,11 @@ class Giant(object):
     def get_target_info(self, ticid):
         """
         """
-        self.ra = self.target_list[self.target_list['ID'] == str(ticid)]['ra'].values[0]
-        self.dec = self.target_list[self.target_list['ID'] == str(ticid)]['dec'].values[0]
 
-        return self.ra, self.dec
+        self.target_row = self.target_list[self.target_list['ID'] == str(ticid)]
+        
+        self.ra = self.target_row['ra'].values[0]
+        self.dec = self.target_row['dec'].values[0]
 
     def _find_sectors(self, ticid):
         """Hidden function to read sectors from a search result."""

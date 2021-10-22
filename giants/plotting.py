@@ -13,7 +13,7 @@ import lightkurve as lk
 import warnings
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
-# import ktransit
+import ktransit
 import matplotlib.ticker as mtick
 # import eleanor
 try:
@@ -429,19 +429,19 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     plt.subplots_adjust(hspace=0)
 
     ax = plt.subplot2grid(dims, (13,6), colspan=6, rowspan=3)
-    # model_lc, ktransit_model = fit_transit_model(target)
-    # result = ktransit_model.fitresult[1:]
-    # kt_period = result[0]
-    # kt_t0 = result[2]
-    # dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
-    # plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
+    model_lc, ktransit_model = fit_transit_model(target)
+    result = ktransit_model.fitresult[1:]
+    kt_period = result[0]
+    kt_t0 = result[2]
+    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
+    plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
 
-    # ax = plt.subplot2grid(dims, (16,6), colspan=6, rowspan=1)
-    # plot_tr_bottom(target.lc, model_lc, kt_period, kt_t0, ax)
-    # plt.subplots_adjust(hspace=0)
+    ax = plt.subplot2grid(dims, (16,6), colspan=6, rowspan=1)
+    plot_tr_bottom(target.lc, model_lc, kt_period, kt_t0, ax)
+    plt.subplots_adjust(hspace=0)
 
-    # ax = plt.subplot2grid(dims, (19,0), colspan=12, rowspan=1)
-    # plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax)
+    ax = plt.subplot2grid(dims, (19,0), colspan=12, rowspan=1)
+    plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
@@ -578,7 +578,7 @@ def plot_folded(lc, period, t0, depth, ax):
     ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='C1')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
     ax.set_xlabel('Phase')
     ax.set_ylabel('Flux')
-    ax.set_xlim(-0.5, 0.5)
+    ax.set_xlim(-0.5*period.value, 0.5*period.value)
     ax.set_ylim(-3*depth, 2*depth)
     plt.grid(True)
 
@@ -589,7 +589,7 @@ def plot_odd(lc, period, t0, depth, ax):
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Odd Transit')
     lc.fold(2*period, t0+period/2).bin(10).plot(ax=ax, c='C1', lw=2)
-    ax.set_xlim(0, .5)
+    ax.set_xlim(0, .5*period.value)
     ax.set_ylim(-3*depth, 2*depth)
 
     plt.grid(True)
@@ -601,7 +601,7 @@ def plot_even(lc, period, t0, depth, ax):
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Even Transit')
     lc.fold(2*period, t0+period/2).bin(10).plot(ax=ax, c='C1', lw=2)
-    ax.set_xlim(-.5, 0)
+    ax.set_xlim(-.5*period.value, 0)
     ax.set_ylim(-3*depth, 2*depth)
 
     plt.grid(True)
@@ -623,30 +623,48 @@ def plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax):
     ax.table(cellText=[values], colLabels=col_labels, loc='center')
 
 def stellar_params(target):
-    from astroquery.mast import Catalogs
-    catalog_data = Catalogs.query_criteria(objectname=f'TIC {target.ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
+    # from astroquery.mast import Catalogs
+    # catalog_data = Catalogs.query_criteria(objectname=f'TIC {target.ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
+    #
+    # ra = catalog_data['ra'][0]
+    # dec = catalog_data['dec'][0]
+    # coords = f'({ra:.2f}, {dec:.2f})'
+    # rstar = catalog_data['rad'][0]
+    # teff = catalog_data['Teff'][0]
+    # if np.isnan(rstar):
+    #     rstar = '?'
+    # else:
+    #     rstar = f'{rstar:.2f}'
+    # if np.isnan(teff):
+    #     teff = '?'
+    # else:
+    #     teff = f'{teff:.0f}'
+    # logg = catalog_data['logg'][0]
+    # if np.isnan(logg):
+    #     logg = '?'
+    # else:
+    #     logg = f'{logg:.2f}'
+    # V = catalog_data['Vmag'][0]
 
-    ra = catalog_data['ra'][0]
-    dec = catalog_data['dec'][0]
-    coords = f'({ra:.2f}, {dec:.2f})'
-    rstar = catalog_data['rad'][0]
-    teff = catalog_data['Teff'][0]
+    coords = f'({target.ra:.2f}, {target.dec:.2f})'
+    rstar = target.target_row['rad'].values[0]
+    teff = target.target_row['Teff'].values[0]
     if np.isnan(rstar):
         rstar = '?'
     else:
-        rstar = f'{rstar:.2f}'
+        rstar = f'{float(rstar):.2f}'
     if np.isnan(teff):
         teff = '?'
     else:
-        teff = f'{teff:.0f}'
-    logg = catalog_data['logg'][0]
+        teff = f'{float(teff):.0f}'
+    logg = target.target_row['logg'].values[0]
     if np.isnan(logg):
         logg = '?'
     else:
-        logg = f'{logg:.2f}'
-    V = catalog_data['Vmag'][0]
+        logg = f'{float(logg):.2f}'
+    V = catalog_data['Vmag'].values[0]
 
-    param_string = rf'(RA, dec)={coords}, R_star={rstar} $R_\odot$, logg={logg}, Teff={teff} K, V={V:.2f}'
+    param_string = rf'(RA, dec)={coords}, R_star={rstar} $R_\odot$, logg={logg}, Teff={teff} K, V={float(V):.2f}'
 
     return param_string
 
