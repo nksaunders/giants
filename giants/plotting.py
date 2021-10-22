@@ -422,10 +422,10 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     plot_tpf(target, ax)
 
     ax = plt.subplot2grid(dims, (13,0), colspan=5, rowspan=2)
-    plot_even(target.lc, period, t0, depth, ax)
+    plot_even(target.lc, period.value, t0.value, depth, ax)
 
     ax = plt.subplot2grid(dims, (15,0), colspan=5, rowspan=2)
-    plot_odd(target.lc, period, t0, depth, ax)
+    plot_odd(target.lc, period.value, t0.value, depth, ax)
     plt.subplots_adjust(hspace=0)
 
     ax = plt.subplot2grid(dims, (13,6), colspan=6, rowspan=3)
