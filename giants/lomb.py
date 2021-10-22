@@ -107,14 +107,13 @@ def fasper(x,y,ofac,hifac, MACC=4):
     02/23/2009, v1.0, MF
       Translation of IDL code (orig. Numerical recipies)
   """
-  #Check dimensions of input arrays  
+  #Check dimensions of input arrays
   n = int(len(x))
   if n != len(y):
     print( 'Incompatible arrays.'  )
     return
 
   nout  = int(0.5*ofac*hifac*n)
-  print('nout',nout)
   nfreqt = int(ofac*hifac*n*MACC)   #Size the FFT as next power
   nfreq = 64             # of 2 above nfreqt.
 
