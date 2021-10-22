@@ -291,8 +291,6 @@ def plot_transit_vetting(ticid, period, t0, lc=None, tpf=None):
 
     tpf[100].plot(ax=fig, title='', show_colorbar=False)
     add_gaia_figure_elements(tpf, fig)
-    fig.set_xlim(tpf.column, tpf.column+11)
-    fig.set_ylim(tpf.row, tpf.row+11)
 
     fig = plt.subplot2grid((6,4),(2,0),colspan=2,rowspan=1)
     lc.fold(2*period, t0+period/2).scatter(ax=fig, c='k', label='Odd Transit')
@@ -355,8 +353,9 @@ def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
 
     plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='firebrick', alpha=0.5, edgecolors='r', s=sizes)
     plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='None', edgecolors='r', s=sizes)
-    plt.xlim([tpf.column, tpf.column+tpf.shape[1]])
-    plt.ylim([tpf.row, tpf.row+tpf.shape[2]])
+    plt.xlim([tpf.column, tpf.column+tpf.shape[1]-1])
+    plt.ylim([tpf.row, tpf.row+tpf.shape[2]-1])
+    plt.axis('off')
 
     return fig
 
@@ -402,8 +401,8 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
 
     ax = plt.subplot2grid(dims, (0,0), colspan=12, rowspan=3)
     plot_raw_lc(target, ax)
-    # param_string = stellar_params(target)
-    # plt.title(f'TIC {target.ticid}, ' + param_string)
+    param_string = stellar_params(target)
+    plt.title(f'TIC {target.ticid}, ' + param_string)
 
     ax = plt.subplot2grid(dims, (4,6), colspan=6, rowspan=2)
     bls_results = get_bls_results(target.lc)
@@ -487,7 +486,7 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     depth = 0 - np.min(model_lc.flux.value)
 
     ax.set_xticklabels([])
-    ax.set_xlim(-.1, .1)
+    ax.set_xlim(-.1*per, .1*per)
     ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
 
     flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray')
@@ -502,7 +501,7 @@ def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
     res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray')
     res_lc.fold(per, t0).remove_outliers().bin().scatter(ax=ax, c='C1', s=10, alpha=.75)
     ax.axhline(0, c='k', linestyle='dashed')
-    ax.set_xlim(-.1, .1)
+    ax.set_xlim(-.1*per, .1*per)
     ax.set_ylabel('Residuals (ppm)')
 
 def plot_fft(lc, ax=None):
