@@ -17,16 +17,16 @@ def save_fits_file(ticid):
     cache_path = '/data/users/nsaunders/cubes'
     outdir = '/data/users/nsaunders/outputs'
 
-    # try:
-    target = Giant(ticid=ticid, csv_path=csv_path,
-                     cache_path=cache_path)
+    try:
+        target = Giant(ticid=ticid, csv_path=csv_path,
+                         cache_path=cache_path)
 
-    # target.save_to_fits(outdir=outdir)
-    target.fetch_and_clean_data(lc_source='local')
-    plot_summary(target, save_fig=True, save_data=True, outdir=outdir)
+        # target.save_to_fits(outdir=outdir)
+        target.fetch_and_clean_data(lc_source='local')
+        plot_summary(target, save_fig=True, save_data=True, outdir=outdir)
 
-    # except:
-    #     pass
+    except:
+        pass
         # try:
         #     target = Giant(ticid=ticid, csv_path=csv_path,
         #                      cache_path=cache_path)
@@ -48,10 +48,10 @@ def save_fits_file(ticid):
 
 
 if __name__ == '__main__':
-    # try:
-    ticid = sys.argv[1]
-    print(f'Generating fits files for target {ticid}...')
+    try:
+        ticid = sys.argv[1]
+        print(f'Generating fits files for target {ticid}...')
 
-    save_fits_file(ticid)
-    # except:
-    #     print(f'Failed to save fits files for target {ticid}.')
+        save_fits_file(ticid)
+    except:
+        print(f'Failed to save fits files for target {ticid}.')

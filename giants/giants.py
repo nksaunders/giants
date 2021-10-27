@@ -173,7 +173,7 @@ class Giant(object):
 
         return lc
 
-    def from_local_data(self, local_data_path, sectors=None):
+    def from_local_data(self, local_data_path, sectors=None, flatten=False):
         """
         Download data from local data cube.
         Data cubes should be stored in the format 's0001-1-1.fits'
@@ -198,19 +198,26 @@ class Giant(object):
 
                 cutout_file = my_cutter.cube_cut(cube_file, f'{self.ra} {self.dec}', 11, verbose=False)
                 tpfs.append(lk.read(cutout_file))
+                os.remove(cutout_file)
             except:
                 continue
 
         tpfc = lk.TargetPixelFileCollection(tpfs)
 
         self.tpf = tpfc[0]
-        lc = self.simple_pca(self.tpf)
+        if flatten:
+            lc = self.simple_pca(self.tpf).flatten(1001)
+        else:
+            lc = self.simple_pca(self.tpf)
 
         # store as LCC for plotting later
         self.lcc = lk.LightCurveCollection([lc])
         self.breakpoints = [lc.time[-1]]
         for tpf in tpfc[1:]:
-            new_lc = self.simple_pca(tpf)
+            if flatten:
+                new_lc = self.simple_pca(tpf).flatten(1001)
+            else:
+                new_lc = self.simple_pca(tpf)
             self.breakpoints.append(new_lc.time[-1])
             self.lcc.append(new_lc)
             lc = lc.append(new_lc)
