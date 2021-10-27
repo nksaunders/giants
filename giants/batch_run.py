@@ -48,10 +48,10 @@ def save_fits_file(ticid):
 
 
 if __name__ == '__main__':
-    try:
-        ticid = sys.argv[1]
-        print(f'Generating fits files for target {ticid}...')
+    # try:
+    ticid = sys.argv[1]
+    print(f'Generating fits files for target {ticid}...')
 
-        save_fits_file(ticid)
-    except:
-        print(f'Failed to save fits files for target {ticid}.')
+    save_fits_file(ticid)
+    # except:
+    #     print(f'Failed to save fits files for target {ticid}.')
