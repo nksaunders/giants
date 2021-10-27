@@ -5,32 +5,46 @@ Script to run a batch of TIC IDs.
 import sys
 try:
     from .giants import Giant
+    from .plotting import plot_summary
 except:
     from giants import Giant
+    from giants.plotting import plot_summary
 
 
 def save_fits_file(ticid):
-    try:
-        target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv',
-                         cache_path='/data/sarek1/nksaun/lightkurve_cache')
 
-        target.save_to_fits(outdir='/data/sarek1/nksaun/tess_giants/tayar_lcs')
+    csv_path = '/data/users/sgrunblatt/TESS_targetlists/ticgiants_allsky_halo.csv'
+    cache_path = '/data/users/nsaunders/cubes'
+    outdir = '/data/users/nsaunders/outputs'
+
+    try:
+        target = Giant(ticid=ticid, csv_path=csv_path,
+                         cache_path=cache_path)
+
+        # target.save_to_fits(outdir=outdir)
+        target.fetch_and_clean_data(lc_source='local')
+        plot_summary(target, save_fig=True, save_data=True, outdir=outdir)
 
     except:
-        try:
-            target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv',
-                             cache_path='/data/sarek1/nksaun/lightkurve_cache')
-
-            target.save_to_fits(outdir='/data/sarek1/nksaun/tayar_giants/zinn_lcs')
-
-        except:
-            try:
-                target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv',
-                                 cache_path='/data/sarek1/nksaun/lightkurve_cache')
-
-                target.save_to_fits(outdir='/data/sarek1/nksaun/tayar_giants/zinn_lcs')
-            except:
-                pass
+        pass
+        # try:
+        #     target = Giant(ticid=ticid, csv_path=csv_path,
+        #                      cache_path=cache_path)
+        #
+        #     # target.save_to_fits(outdir=outdir)
+        #     target.fetch_and_clean_data(lc_source='local')
+        #     plot_summary(target, save_fig=True, save_data=True, outdir=outdir)
+        #
+        # except:
+        #     try:
+        #         target = Giant(ticid=ticid, csv_path=csv_path,
+        #                          cache_path=cache_path)
+        #
+        #         # target.save_to_fits(outdir=outdir)
+        #         target.fetch_and_clean_data(lc_source='local')
+        #         plot_summary(target, save_fig=True, save_data=True, outdir=outdir)
+        #     except:
+        #         pass
 
 
 if __name__ == '__main__':

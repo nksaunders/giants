@@ -173,7 +173,7 @@ class Giant(object):
 
         return lc
 
-    def from_local_data(self, local_data_path):
+    def from_local_data(self, local_data_path, sectors=None):
         """
         Download data from local data cube.
         Data cubes should be stored in the format 's0001-1-1.fits'
@@ -232,7 +232,7 @@ class Giant(object):
         """
 
         self.target_row = self.target_list[self.target_list['ID'] == str(ticid)]
-        
+
         self.ra = self.target_row['ra'].values[0]
         self.dec = self.target_row['dec'].values[0]
 
@@ -658,8 +658,8 @@ class Giant(object):
             background-corrected light curve
         """
         aper = tpf._parse_aperture_mask('threshold')
-        raw_lc = tpf.to_lightcurve(aperture_mask=aper).remove_nans()
-        mask = raw_lc.flux_err > 0
+        raw_lc = tpf.to_lightcurve(aperture_mask=aper)
+        mask = (raw_lc.flux_err > 0) | (~np.isnan(raw_lc.flux))
         self.raw_lc = raw_lc[mask]
         tpf = tpf[mask]
 
@@ -676,7 +676,7 @@ class Giant(object):
 
         return corrected_lc
 
-    def save_to_fits(self, outdir=None):
+    def save_to_fits(self, outdir=None, lc_source='local'):
         """
         Pipeline to download and de-trend a target using the `lightkurve` implememtation.
         Downloads data, removes background, and saves as fits files. This function outputs:
