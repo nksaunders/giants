@@ -8,7 +8,7 @@ try:
     from .plotting import plot_summary
 except:
     from giants import Giant
-    from giants.plotting import plot_summary
+    from plotting import plot_summary
 
 
 def save_fits_file(ticid):
