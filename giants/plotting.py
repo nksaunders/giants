@@ -465,7 +465,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
             file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur}\n")
 
     if save_fig:
-        fig.savefig(str(outdir)+'/plots/'+str(target.ticid)+'_summary.png')
+        fig.savefig(str(outdir)+'/plots/'+str(target.ticid)+'_summary.png', bbox_inches='tight')
 
 def fit_transit_model(target):
     """
