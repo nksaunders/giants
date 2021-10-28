@@ -574,19 +574,22 @@ def plot_folded(lc, period, t0, depth, ax):
     if ax is None:
         _, ax = plt.subplots(1)
 
-    time, flux, flux_err = lc.time, lc.flux, lc.flux_err
-
-    phase = (t0 % period) / period
-    foldedtimes = (((time.value - phase * period) / period) % 1)
-    foldedtimes[foldedtimes > 0.5] -= 1
-    foldtimesort = np.argsort(foldedtimes)
-    foldfluxes = flux[foldtimesort]
-
-    ax.plot(foldedtimes, flux, 'k.', markersize=2)
-    ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='r')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
-    ax.set_xlabel('Phase')
-    ax.set_ylabel('Flux')
-    ax.set_xlim(-0.5, 0.5)
+    # time, flux, flux_err = lc.time, lc.flux, lc.flux_err
+    #
+    # phase = (t0 % period) / period
+    # foldedtimes = (((time.value - phase * period) / period) % 1)
+    # foldedtimes[foldedtimes > 0.5] -= 1
+    # foldtimesort = np.argsort(foldedtimes)
+    # foldfluxes = flux[foldtimesort]
+    #
+    # ax.plot(foldedtimes, flux, 'k.', markersize=2)
+    # ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='r')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
+    # ax.set_xlabel('Phase')
+    # ax.set_ylabel('Flux')
+    # ax.set_xlim(-0.5, 0.5)
+    lc.fold(period, t0).scatter(ax=ax, c='k', s=25)
+    lc.fold(period, t0).bin(.1).plot(ax=ax, c='r', lw=2)
+    ax.set_xlim(-.5*period, .5*period)
     ax.set_ylim(-3*depth, 2*depth)
     plt.grid(True)
 
@@ -595,7 +598,7 @@ def plot_odd(lc, period, t0, depth, ax):
     if ax is None:
         _, ax = plt.subplots(1)
 
-    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Odd Transit')
+    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Odd Transit', s=25)
     lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(0, period)
     ax.set_ylim(-3*depth, 2*depth)
@@ -607,7 +610,7 @@ def plot_even(lc, period, t0, depth, ax):
     if ax is None:
         _, ax = plt.subplots(1)
 
-    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Even Transit')
+    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Even Transit', s=25)
     lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(-period, 0)
     ax.set_ylim(-3*depth, 2*depth)
