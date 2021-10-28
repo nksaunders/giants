@@ -412,10 +412,13 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
 
     scaled_residuals = np.median(fit_transit_model(target)[1].residuals()) / np.std(target.lc.flux.value)
 
+    fig = plt.gcf()
+    fig.suptitle(f'TIC {target.ticid}', fontweight='bold', size=24)
+
     ax = plt.subplot2grid(dims, (0,0), colspan=24, rowspan=3)
     plot_raw_lc(target, ax)
     param_string = stellar_params(target)
-    ax.set_title(f'TIC {target.ticid}, ' + param_string, fontweight='bold', size=24)
+    ax.set_title(param_string, size=20)
 
     ax = plt.subplot2grid(dims, (4,0), colspan=16, rowspan=3)
     plot_folded(target.lc, period.value, t0.value, depth, ax)
