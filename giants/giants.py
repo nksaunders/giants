@@ -728,7 +728,7 @@ if __name__ == '__main__':
     except:
         pass
 
-    target = Giant(ticid=ticid, csv_path='/data/users/sgrunblatt/TESS_targetlists/ticgiants_allsky_halo.csv')
+    target = Giant(ticid=ticid)
 
     if output=="plot":
         target.fetch_and_clean_data(lc_source='local')
