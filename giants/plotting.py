@@ -415,7 +415,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     ax = plt.subplot2grid(dims, (0,0), colspan=24, rowspan=3)
     plot_raw_lc(target, ax)
     param_string = stellar_params(target)
-    plt.title(f'TIC {target.ticid}, ' + param_string)
+    ax.set_title(f'TIC {target.ticid}, ' + param_string, fontweight='bold', size=24)
 
     ax = plt.subplot2grid(dims, (4,0), colspan=16, rowspan=3)
     plot_folded(target.lc, period.value, t0.value, depth, ax)
