@@ -384,7 +384,7 @@ def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=
     # return the light curve
     return system.lightcurve
 
-def plot_summary():
+def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     """
 
     """
@@ -441,7 +441,7 @@ def plot_summary():
     plt.subplots_adjust(hspace=0)
 
     ax = plt.subplot2grid(dims, (13,9), colspan=6, rowspan=4)
-    plot_table(ax)
+    plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
