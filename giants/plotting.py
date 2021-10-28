@@ -403,6 +403,13 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     kt_t0 = result[2]
     dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
 
+    # fit BLS
+    bls_results = get_bls_results(target.lc)
+    period = bls_results.period[np.argmax(bls_results.power)]
+    t0 = bls_results.transit_time[np.argmax(bls_results.power)]
+    depth = bls_results.depth[np.argmax(bls_results.power)]
+    depth_snr = bls_results.depth_snr[np.argmax(bls_results.power)]
+
     ax = plt.subplot2grid(dims, (0,0), colspan=24, rowspan=3)
     plot_raw_lc(target, ax)
     param_string = stellar_params(target)
@@ -430,11 +437,6 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     plt.subplots_adjust(hspace=0)
 
     ax = plt.subplot2grid(dims, (12,17), colspan=7, rowspan=3)
-    bls_results = get_bls_results(target.lc)
-    period = bls_results.period[np.argmax(bls_results.power)]
-    t0 = bls_results.transit_time[np.argmax(bls_results.power)]
-    depth = bls_results.depth[np.argmax(bls_results.power)]
-    depth_snr = bls_results.depth_snr[np.argmax(bls_results.power)]
     plot_bls(target.lc, ax, results=bls_results)
     plt.subplots_adjust(hspace=0)
 
