@@ -413,7 +413,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     scaled_residuals = np.median(fit_transit_model(target)[1].residuals()) / np.std(target.lc.flux.value)
 
     fig = plt.gcf()
-    fig.suptitle(f'TIC {target.ticid}', fontweight='bold', size=24, y=0.935)
+    fig.suptitle(f'TIC {target.ticid}', fontweight='bold', size=24, y=0.93)
 
     ax = plt.subplot2grid(dims, (0,0), colspan=24, rowspan=3)
     plot_raw_lc(target, ax)
@@ -455,6 +455,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
                dur, scaled_residuals, ax)
 
     fig = plt.gcf()
+    plt.tight_layout()
     fig.patch.set_facecolor('white')
     fig.set_size_inches([d-1 for d in dims[::-1]])
 
