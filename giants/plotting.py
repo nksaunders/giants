@@ -427,7 +427,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     ax = plt.subplot2grid(dims, (8,8), colspan=8, rowspan=3)
     plot_odd(target.lc, period.value, t0.value, depth, ax)
     plt.subplots_adjust(wspace=0)
-    ax.axes.get_yaxis().set_visible(False)
+    ax.set_yticklabels([])
 
     ax = plt.subplot2grid(dims, (12,0), colspan=8, rowspan=4)
     plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
@@ -624,7 +624,12 @@ def plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax):
 
     ax.axis('tight')
     ax.axis('off')
-    ax.table(cellText=[values], colLabels=col_labels, loc='center')
+    tab = ax.table(list(zip(col_labels, values)), colLabels=None, loc='center', edges='open', fontsize=14)
+    for r in range(0, len(col_labels)):
+        cell = tab[r, 0]
+        cell.set_height(0.2)
+        cell = tab[r, 1]
+        cell.set_height(0.2)
 
 def stellar_params(target):
     # from astroquery.mast import Catalogs
