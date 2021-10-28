@@ -428,6 +428,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     plot_odd(target.lc, period.value, t0.value, depth, ax)
     plt.subplots_adjust(wspace=0)
     ax.set_yticklabels([])
+    ax.set_ylabel('')
 
     ax = plt.subplot2grid(dims, (12,0), colspan=8, rowspan=4)
     plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
