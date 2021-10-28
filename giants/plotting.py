@@ -384,28 +384,50 @@ def create_starry_model(time, rprs=.01, period=15., t0=5., i=90, ecc=0., m_star=
     # return the light curve
     return system.lightcurve
 
-def plot_summary(target, outdir=None, save_data=False, save_fig=True):
+def plot_summary():
     """
 
     """
-    print(f"Generating plot summary for TIC {target.ticid}.\n"
-          "This may take a few minutes.")
-    if outdir is None:
-        outdir = os.path.join(target.PACKAGEDIR, 'outputs')
 
     font = {'family' : 'sans',
-        'size'   : 11}
+        'size'   : 14}
     matplotlib.rc('font', **font)
     plt.style.use('seaborn-muted')
 
-    dims=(20, 12)
+    dims=(18, 24)
 
-    ax = plt.subplot2grid(dims, (0,0), colspan=12, rowspan=3)
+    ax = plt.subplot2grid(dims, (0,0), colspan=24, rowspan=3)
     plot_raw_lc(target, ax)
     param_string = stellar_params(target)
     plt.title(f'TIC {target.ticid}, ' + param_string)
 
-    ax = plt.subplot2grid(dims, (4,6), colspan=6, rowspan=2)
+    ax = plt.subplot2grid(dims, (4,0), colspan=16, rowspan=3)
+    plot_folded(target.lc, period.value, t0.value, depth, ax)
+
+    ax = plt.subplot2grid(dims, (4,17), colspan=7, rowspan=7)
+    plot_tpf(target, ax)
+
+    ax = plt.subplot2grid(dims, (8,0), colspan=8, rowspan=3)
+    plot_even(target.lc, period.value, t0.value, depth, ax)
+
+    ax = plt.subplot2grid(dims, (8,8), colspan=8, rowspan=3)
+    plot_odd(target.lc, period.value, t0.value, depth, ax)
+    plt.subplots_adjust(wspace=0)
+    ax.axes.get_yaxis().set_visible(False)
+
+    ax = plt.subplot2grid(dims, (12,0), colspan=8, rowspan=4)
+    model_lc, ktransit_model = fit_transit_model(target)
+    result = ktransit_model.fitresult[1:]
+    kt_period = result[0]
+    kt_t0 = result[2]
+    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
+    plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
+
+    ax = plt.subplot2grid(dims, (16,0), colspan=8, rowspan=2)
+    plot_tr_bottom(target.lc, model_lc, kt_period, kt_t0, ax)
+    plt.subplots_adjust(hspace=0)
+
+    ax = plt.subplot2grid(dims, (12,17), colspan=7, rowspan=3)
     bls_results = get_bls_results(target.lc)
     period = bls_results.period[np.argmax(bls_results.power)]
     t0 = bls_results.transit_time[np.argmax(bls_results.power)]
@@ -414,40 +436,16 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     plot_bls(target.lc, ax, results=bls_results)
     plt.subplots_adjust(hspace=0)
 
-    ax = plt.subplot2grid(dims, (6,6), colspan=6, rowspan=6)
+    ax = plt.subplot2grid(dims, (15,17), colspan=7, rowspan=3)
     freq, fts = plot_fft(target.lc, ax)
-
-    ax = plt.subplot2grid(dims, (4,0), colspan=5, rowspan=2)
-    plot_folded(target.lc, period.value, t0.value, depth, ax)
-
-    ax = plt.subplot2grid(dims, (7,0), colspan=5, rowspan=5)
-    plot_tpf(target, ax)
-
-    ax = plt.subplot2grid(dims, (13,0), colspan=5, rowspan=2)
-    plot_even(target.lc, period.value, t0.value, depth, ax)
-
-    ax = plt.subplot2grid(dims, (15,0), colspan=5, rowspan=2)
-    plot_odd(target.lc, period.value, t0.value, depth, ax)
     plt.subplots_adjust(hspace=0)
 
-    ax = plt.subplot2grid(dims, (13,6), colspan=6, rowspan=3)
-    model_lc, ktransit_model = fit_transit_model(target)
-    result = ktransit_model.fitresult[1:]
-    kt_period = result[0]
-    kt_t0 = result[2]
-    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
-    plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
-
-    ax = plt.subplot2grid(dims, (16,6), colspan=6, rowspan=1)
-    plot_tr_bottom(target.lc, model_lc, kt_period, kt_t0, ax)
-    plt.subplots_adjust(hspace=0)
-
-    ax = plt.subplot2grid(dims, (19,0), colspan=12, rowspan=1)
-    plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax)
+    ax = plt.subplot2grid(dims, (13,9), colspan=6, rowspan=4)
+    plot_table(ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
-    fig.set_size_inches(dims[::-1])
+    fig.set_size_inches([d-1 for d in dims[::-1]])
 
     if save_data:
         np.savetxt(outdir+'/timeseries/'+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time.value, target.lc.flux.value]), fmt='%.8f', delimiter=' ')
