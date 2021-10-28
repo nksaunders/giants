@@ -531,7 +531,7 @@ def plot_fft(lc, ax=None):
     freq = freq[use]
     fts = fts[use]
 
-    ax.loglog(freq, fts/np.max(fts), c='mediumorchid')
+    ax.loglog(freq, fts/np.max(fts), c='darkorchid')
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='gold', lw=2.5)
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='r', lw=2.5)
     ax.axvline(283,-1,1, ls='--', color='k')
