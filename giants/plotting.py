@@ -410,6 +410,8 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     depth = bls_results.depth[np.argmax(bls_results.power)]
     depth_snr = bls_results.depth_snr[np.argmax(bls_results.power)]
 
+    scaled_residuals = np.median(fit_transit_model(target)[1].residuals()) / np.std(target.lc.flux.value)
+
     ax = plt.subplot2grid(dims, (0,0), colspan=24, rowspan=3)
     plot_raw_lc(target, ax)
     param_string = stellar_params(target)
@@ -446,7 +448,8 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     plt.subplots_adjust(hspace=0)
 
     ax = plt.subplot2grid(dims, (13,9), colspan=6, rowspan=4)
-    plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax)
+    plot_table(target, model_lc, ktransit_model, depth_snr,
+               dur, scaled_residuals, ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
@@ -615,22 +618,23 @@ def plot_tpf(target, ax):
     ax = target.tpf.plot(ax=ax, show_colorbar=False, frame=100)
     ax = add_gaia_figure_elements(target.tpf, ax)
 
-def plot_table(target, model_lc, ktransit_model, depth_snr, dur, ax):
+def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
     result = ktransit_model.fitresult[1:]
 
-    col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR']
+    col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR', 'Scaled Residuals']
     values = [f'{val:.3f}' for val in result]
     values.append(f'{dur.value:.3f}')
     values.append(f'{depth_snr:.3f}')
+    values.append(f'{resid:.3f}')
 
     ax.axis('tight')
     ax.axis('off')
     tab = ax.table(list(zip(col_labels, values)), colLabels=None, loc='center', edges='open', fontsize=14)
     for r in range(0, len(col_labels)):
         cell = tab[r, 0]
-        cell.set_height(0.2)
+        cell.set_height(0.15)
         cell = tab[r, 1]
-        cell.set_height(0.2)
+        cell.set_height(0.15)
 
 def stellar_params(target):
     # from astroquery.mast import Catalogs
