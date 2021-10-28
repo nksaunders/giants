@@ -497,8 +497,8 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
 
     flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
-    flux_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=300, alpha=.75)
-    model_lc.fold(per, t0).plot(ax=ax, c='cornflowerblue', lw=2)
+    flux_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='dodgerblue', s=420, alpha=.75)
+    model_lc.fold(per, t0).plot(ax=ax, c='r', lw=3, zorder=10000)
 
     ax.set_ylabel('Normalized Flux')
 
@@ -506,7 +506,7 @@ def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
     res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
     res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
-    res_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=300, alpha=.75)
+    res_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='dodgerblue', s=420, alpha=.75)
     ax.axhline(0, c='k', linestyle='dashed')
     ax.set_xlim(-.1*per, .1*per)
     ax.set_ylabel('Residuals (ppm)')
@@ -531,7 +531,7 @@ def plot_fft(lc, ax=None):
     freq = freq[use]
     fts = fts[use]
 
-    ax.loglog(freq, fts/np.max(fts), c='cornflowerblue')
+    ax.loglog(freq, fts/np.max(fts), c='mediumorchid')
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='gold', lw=2.5)
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='r', lw=2.5)
     ax.axvline(283,-1,1, ls='--', color='k')
