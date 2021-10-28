@@ -587,7 +587,7 @@ def plot_folded(lc, period, t0, depth, ax):
     # ax.set_xlabel('Phase')
     # ax.set_ylabel('Flux')
     # ax.set_xlim(-0.5, 0.5)
-    lc.fold(period, t0).scatter(ax=ax, c='k', s=25)
+    lc.fold(period, t0).scatter(ax=ax, c='gray', s=25)
     lc.fold(period, t0).bin(.1).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(-.5*period, .5*period)
     ax.set_ylim(-3*depth, 2*depth)
@@ -598,7 +598,7 @@ def plot_odd(lc, period, t0, depth, ax):
     if ax is None:
         _, ax = plt.subplots(1)
 
-    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Odd Transit', s=25)
+    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='gray', label='Odd Transit', s=25)
     lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(0, period)
     ax.set_ylim(-3*depth, 2*depth)
@@ -610,7 +610,7 @@ def plot_even(lc, period, t0, depth, ax):
     if ax is None:
         _, ax = plt.subplots(1)
 
-    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='k', label='Even Transit', s=25)
+    lc.fold(2*period, t0+period/2).scatter(ax=ax, c='gray', label='Even Transit', s=25)
     lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(-period, 0)
     ax.set_ylim(-3*depth, 2*depth)
