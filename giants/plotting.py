@@ -498,7 +498,7 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
 
     flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
     flux_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='r', s=300, alpha=.75)
-    model_lc.fold(per, t0).plot(ax=ax, c='k', lw=2)
+    model_lc.fold(per, t0).plot(ax=ax, c='cornflowerblue', lw=2)
 
     ax.set_ylabel('Normalized Flux')
 
@@ -531,8 +531,8 @@ def plot_fft(lc, ax=None):
     freq = freq[use]
     fts = fts[use]
 
-    ax.loglog(freq, fts/np.max(fts))
-    ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='C1', lw=2.5)
+    ax.loglog(freq, fts/np.max(fts), c='cornflowerblue')
+    ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='gold', lw=2.5)
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='r', lw=2.5)
     ax.axvline(283,-1,1, ls='--', color='k')
     ax.set_xlabel("Frequency [uHz]")
@@ -564,10 +564,10 @@ def plot_bls(lc, ax, results=None):
     ax.set_ylabel("log likelihood")
 
     # Highlight the harmonics of the peak period
-    ax.axvline(period.value, alpha=0.4, lw=4)
+    ax.axvline(period.value, alpha=0.4, lw=4, c='cornflowerblue')
     for n in range(2, 10):
-        ax.axvline(n*period.value, alpha=0.4, lw=1, linestyle="dashed")
-        ax.axvline(period.value / n, alpha=0.4, lw=1, linestyle="dashed")
+        ax.axvline(n*period.value, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.axvline(period.value / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
 
 def plot_folded(lc, period, t0, depth, ax):
 
