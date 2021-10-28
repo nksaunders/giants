@@ -455,7 +455,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
                dur, scaled_residuals, ax)
 
     fig = plt.gcf()
-    plt.tight_layout()
+    fig.tight_layout()
     fig.patch.set_facecolor('white')
     fig.set_size_inches([d-1 for d in dims[::-1]])
 
