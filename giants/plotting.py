@@ -590,7 +590,8 @@ def plot_folded(lc, period, t0, depth, ax):
     # ax.set_xlabel('Phase')
     # ax.set_ylabel('Flux')
     # ax.set_xlim(-0.5, 0.5)
-    lc.fold(period, t0).scatter(ax=ax, c='gray', s=25)
+    lc.fold(period, t0).scatter(ax=ax, c='gray', s=25,
+                                label=rf'$P={period:.2f}$ d')
     lc.fold(period, t0).bin(.1).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(-.5*period, .5*period)
     ax.set_ylim(-3*depth, 2*depth)
