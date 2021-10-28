@@ -728,10 +728,10 @@ if __name__ == '__main__':
         except:
             pass
 
-        target = Giant(ticid=ticid, csv_path='data/ticgiants_allsky_halo.csv', cache_path='/data/sarek1/nksaun/lightkurve_cache')
+        target = Giant(ticid=ticid, csv_path='/data/users/sgrunblatt/TESS_targetlists/ticgiants_allsky_halo.csv')
 
         if output=="plot":
-            target.fetch_and_clean_data(lc_source='lightkurve')
+            target.fetch_and_clean_data(lc_source='local')
             plot_summary(target, outdir=outdir, save_data=True)
         else:
             target.save_to_fits(outdir=outdir)

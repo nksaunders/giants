@@ -462,7 +462,7 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
         np.savetxt(outdir+'/timeseries/'+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time.value, target.lc.flux.value]), fmt='%.8f', delimiter=' ')
         np.savetxt(outdir+'/fft/'+str(target.ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
         with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
-            file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur}\n")
+            file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur} {scaled_residuals}\n")
 
     if save_fig:
         fig.savefig(str(outdir)+'/plots/'+str(target.ticid)+'_summary.png', bbox_inches='tight')
