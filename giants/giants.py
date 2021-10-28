@@ -223,7 +223,6 @@ class Giant(object):
             lc = lc.append(new_lc)
 
         self.lc = lc
-        os.remove('*astrocut.fits')
 
         return lc
 
