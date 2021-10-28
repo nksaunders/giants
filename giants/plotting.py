@@ -349,7 +349,7 @@ def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
     result.DE_ICRS += pmdec
 
     # Gently size the points by their Gaia magnitude
-    sizes = 10000.0 / 2**(result['Gmag']/2)
+    sizes = 50000.0 / 2**(result['Gmag']/2)
 
     plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='firebrick', alpha=0.5, edgecolors='r', s=sizes)
     plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='None', edgecolors='r', s=sizes)
