@@ -632,12 +632,12 @@ def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
 
     ax.axis('tight')
     ax.axis('off')
-    tab = ax.table(list(zip(col_labels, values)), colLabels=None, loc='center', edges='open', fontsize=14)
+    tab = ax.table(list(zip(col_labels, values)), colLabels=None, loc='center', edges='open', fontsize=16)
     for r in range(0, len(col_labels)):
         cell = tab[r, 0]
-        cell.set_height(0.15)
+        cell.set_height(0.2)
         cell = tab[r, 1]
-        cell.set_height(0.15)
+        cell.set_height(0.2)
 
 def stellar_params(target):
     # from astroquery.mast import Catalogs
