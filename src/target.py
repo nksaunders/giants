@@ -5,15 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
-from astropy.stats import BoxLeastSquares, mad_std, LombScargle
-import astropy.stats as ass
 import lightkurve as lk
-import warnings
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-import astropy.units as u
-import ktransit
-from matplotlib.backends.backend_pdf import PdfPages
-import eleanor
 
 
 class Target(object):
@@ -164,23 +156,58 @@ class Target(object):
         # store in a LightCurveCollection object and return
         return lk.LightCurveCollection([raw_lc, corr_lc])
 
-    def from_local_data(self, local_data_path):
+    def from_local_data(self, local_data_path, sectors=None, flatten=False):
         """
-        Download data from local data cube.
+        Create light curve from local data cube.
         Data cubes should be stored in the format 's0001-1-1.fits'
         """
 
-        sectors = self._find_sectors(self.ticid)
+        self.get_target_info(self.ticid)
+
+        # sectors = self._find_sectors(self.ticid)
+        obs = self.fetch_obs(self.ra, self.dec)
+        sectors = obs[0]
         if not self.silent:
             print(f'Creating light curve for target {self.ticid} for sectors {sectors}.')
 
         my_cutter = CutoutFactory()
         local_data_path = '/data/users/nsaunders/cubes' # !! HACK
-        for obs in available_obs:
-            cube_file = os.path.join(local_data_path,
-                                     's{obs[0]:04d}-{obs[1]}-{obs[2]}.fits')
+        available_obs = np.array(obs).T.reshape(len(obs[0]), len(obs))
+        tpfs = []
+        for obs_ in available_obs:
+            try:
+                cube_file = os.path.join(local_data_path,
+                                         f's{obs_[0]:04d}-{obs_[1]}-{obs_[2]}.fits')
 
-            cutout_file = my_cutter.cube_cut(cube_file, f'{self.RA}, {self.dec}', 5, verbose=True)
+                cutout_file = my_cutter.cube_cut(cube_file, f'{self.ra} {self.dec}', 11, verbose=False)
+                tpfs.append(lk.read(cutout_file))
+                os.remove(cutout_file)
+            except:
+                continue
+
+        tpfc = lk.TargetPixelFileCollection(tpfs)
+
+        self.tpf = tpfc[0]
+        if flatten:
+            lc = self.simple_pca(self.tpf).flatten(1001)
+        else:
+            lc = self.simple_pca(self.tpf)
+
+        # store as LCC for plotting later
+        self.lcc = lk.LightCurveCollection([lc])
+        self.breakpoints = [lc.time[-1]]
+        for tpf in tpfc[1:]:
+            if flatten:
+                new_lc = self.simple_pca(tpf).flatten(1001)
+            else:
+                new_lc = self.simple_pca(tpf)
+            self.breakpoints.append(new_lc.time[-1])
+            self.lcc.append(new_lc)
+            lc = lc.append(new_lc)
+
+        self.lc = lc
+
+        return lc
 
 
     def fetch_and_clean_data(self, lc_source='lightkurve', method='pca', flatten=True, sectors=None, gauss_filter_lc=True, **kwargs):
@@ -238,3 +265,23 @@ class Target(object):
         self.lc = lc
         self.mask = mask
         return lc
+
+if __name__ == '__main__':
+    try:
+        ticid = sys.argv[1]
+        outdir = sys.argv[2]
+        output = "plot"
+        try:
+            output = sys.argv[3]
+        except:
+            pass
+
+        target = Giant(ticid=ticid)
+
+        if output=="plot":
+            target.fetch_and_clean_data(lc_source='local', flatten=True)
+            plot_summary(target, outdir=outdir, save_data=True)
+        else:
+            target.save_to_fits(outdir=outdir)
+    except:
+        print(f'Target {sys.argv[1]} failed.')

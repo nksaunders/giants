@@ -731,7 +731,7 @@ if __name__ == '__main__':
         target = Giant(ticid=ticid)
 
         if output=="plot":
-            target.fetch_and_clean_data(lc_source='local')
+            target.fetch_and_clean_data(lc_source='local', flatten=True)
             plot_summary(target, outdir=outdir, save_data=True)
         else:
             target.save_to_fits(outdir=outdir)
