@@ -531,7 +531,7 @@ def plot_fft(lc, ax=None):
     # bin = freq[1] - freq[0]
     # fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
 
-    ls = lc.to_periodogram('ls', nyquist=nyq)
+    ls = lc.to_periodogram('ls')
     freq = ls.freq.value
     fts = ls.power.value
 
