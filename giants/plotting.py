@@ -639,7 +639,7 @@ def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
     values = [f'{val:.3f}' for val in result]
 
     rstar = float(target.target_row['rad'].values[0])
-    values.append(f'{values[-1] * rstar * 9.731:.3f}')
+    values.append(f'{float(values[-1]) * rstar * 9.731:.3f}')
     values.append(f'{dur.value:.3f}')
     values.append(f'{depth_snr:.3f}')
     values.append(f'{resid:.3f}')
