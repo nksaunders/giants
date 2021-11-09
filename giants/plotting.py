@@ -409,7 +409,8 @@ def plot_summary(target, outdir=None, save_data=False, save_fig=True):
     period = bls_results.period[np.argmax(bls_results.power)]
     t0 = bls_results.transit_time[np.argmax(bls_results.power)]
     depth = bls_results.depth[np.argmax(bls_results.power)]
-    depth_snr = bls_results.depth_snr[np.argmax(bls_results.power)]
+    depth_snr = depth / np.std(target.lc.flux.value)
+    # depth_snr = bls_results.depth_snr[np.argmax(bls_results.power)]
 
     scaled_residuals = np.median(fit_transit_model(target)[1].residuals()) / np.std(target.lc.flux.value)
 
@@ -634,8 +635,11 @@ def plot_tpf(target, ax):
 def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
     result = ktransit_model.fitresult[1:]
 
-    col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR', 'Scaled Likelihood']
+    col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', r'R$_P$ (R$_J$)', 'Duration (hours)', 'Depth SNR', 'Scaled Likelihood']
     values = [f'{val:.3f}' for val in result]
+
+    rstar = float(target.target_row['rad'].values[0])
+    values.append(f'{values[-1] * rstar * 9.731:.3f}')
     values.append(f'{dur.value:.3f}')
     values.append(f'{depth_snr:.3f}')
     values.append(f'{resid:.3f}')
@@ -645,9 +649,9 @@ def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
     tab = ax.table(list(zip(col_labels, values)), colLabels=None, loc='center', edges='open', fontsize=16)
     for r in range(0, len(col_labels)):
         cell = tab[r, 0]
-        cell.set_height(0.2)
+        cell.set_height(0.175)
         cell = tab[r, 1]
-        cell.set_height(0.2)
+        cell.set_height(0.175)
 
 def stellar_params(target):
     # from astroquery.mast import Catalogs
