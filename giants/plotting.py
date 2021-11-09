@@ -485,7 +485,7 @@ def plot_raw_lc(target, ax=None):
         _, ax = plt.subplots(1)
 
 
-    target.lc.plot(ax=ax, c='k')
+    target.lc.scatter(ax=ax, c='k', s=50)
     ax.set_xlim(target.lc.time.value[0], target.lc.time.value[-1])
     for b in target.breakpoints:
         ax.axvline(b.value, linestyle='--', color='r')
@@ -627,7 +627,8 @@ def plot_even(lc, period, t0, depth, ax):
     plt.grid(True)
 
 def plot_tpf(target, ax):
-    ax = target.tpf.plot(ax=ax, show_colorbar=True, frame=100, label=f'{target.ticid}')
+    fnumber = 100
+    ax = target.tpf.plot(ax=ax, show_colorbar=True, frame=fnumber, title=f'TIC {target.ticid}, cadence {fnumber}')
     ax = add_gaia_figure_elements(target.tpf, ax)
 
 def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
