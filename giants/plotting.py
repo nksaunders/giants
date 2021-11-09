@@ -145,7 +145,8 @@ def plot_quicklook(lc, ticid, breakpoints, target_list, save_data=True, outdir=N
     period = results.period[np.argmax(results.power)]
     t0 = results.transit_time[np.argmax(results.power)]
     depth = results.depth[np.argmax(results.power)]
-    depth_snr = results.depth_snr[np.argmax(results.power)]
+    depth_snr = depth / np.std(flux.value)
+    # depth_snr = results.depth_snr[np.argmax(results.power)]
 
     '''
     Plot Filtered Light Curve
@@ -518,17 +519,21 @@ def plot_fft(lc, ax=None):
     if ax is None:
         _, ax = plt.subplots(1)
 
-    osample=5.
+    # osample=5.
     nyq=283.
+    #
+    # time = lc.time
+    # flux = lc.flux
+    #
+    # # calculate FFT
+    # freq, amp, nout, jmax, prob = lomb.fasper(time, flux, osample, 3.)
+    # freq = 1000. * freq / 86.4
+    # bin = freq[1] - freq[0]
+    # fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
 
-    time = lc.time
-    flux = lc.flux
-
-    # calculate FFT
-    freq, amp, nout, jmax, prob = lomb.fasper(time, flux, osample, 3.)
-    freq = 1000. * freq / 86.4
-    bin = freq[1] - freq[0]
-    fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
+    ls = lc.to_periodogram('ls', nyquist=nyq)
+    freq = ls.freq.value
+    fts = ls.power.value
 
     use = np.where(freq.value < nyq + 150)
     freq = freq[use]
@@ -628,7 +633,7 @@ def plot_tpf(target, ax):
 def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
     result = ktransit_model.fitresult[1:]
 
-    col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR', 'Scaled Residuals']
+    col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', 'Duration (hours)', 'Depth SNR', 'Scaled Likelihood']
     values = [f'{val:.3f}' for val in result]
     values.append(f'{dur.value:.3f}')
     values.append(f'{depth_snr:.3f}')
