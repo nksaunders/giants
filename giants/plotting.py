@@ -535,7 +535,7 @@ def plot_fft(lc, ax=None):
     freq = ls.frequency.value
     fts = ls.power.value
 
-    use = np.where(freq.value < nyq + 150)
+    use = np.where(freq < nyq + 150)
     freq = freq[use]
     fts = fts[use]
 
