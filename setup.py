@@ -7,10 +7,10 @@ with open('requirements.txt') as f:
     install_requires = f.read().splitlines()
 
 setup(name='giants',
-      version='0.0.0',
+      version='0.0.1',
       description="",
       author='Samuel Grunblatt, Nicholas Saunders',
       license='',
-      package_dir={'giants': 'giants'},
+      package_dir={'': 'src'},
       install_requires=install_requires,
       )
