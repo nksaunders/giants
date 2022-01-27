@@ -1,11 +1,11 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-giants/__pycache__/
-giants/__pycache__/*
-giants/data/ticgiants_bright_v2_skgrunblatt.csv
-giants/outputs/*
+giants_depr/
+src/giants/data/ticgiants_allsky_halo.csv
+src/giants/data/ticgiants_bright_v2_skgrunblatt.csv
 Notebooks/plots/
 Notebooks/
+generate_batch_files.ipynb
 *.py[cod]
 
 *.icloud
