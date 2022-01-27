@@ -13,7 +13,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
 import ktransit
 from matplotlib.backends.backend_pdf import PdfPages
-import eleanor
+# import eleanor
 
 from . import PACKAGEDIR
 from .plotting import plot_summary
