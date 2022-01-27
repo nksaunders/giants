@@ -6,7 +6,10 @@ src/giants/data/ticgiants_bright_v2_skgrunblatt.csv
 Notebooks/plots/
 Notebooks/
 generate_batch_files.ipynb
+
 *.py[cod]
+
+*.egg-info/
 
 *.icloud
 */*.icloud
