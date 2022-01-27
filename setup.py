@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 import os
 import sys
-from setuptools import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
 with open('requirements.txt') as f:
     install_requires = f.read().splitlines()
@@ -11,6 +14,8 @@ setup(name='giants',
       description="",
       author='Samuel Grunblatt, Nicholas Saunders',
       license='',
+      packages=['giants'],
       package_dir={'': 'src'},
+      package_data={'giants': ['data/downlinks.txt']},
       install_requires=install_requires,
       )

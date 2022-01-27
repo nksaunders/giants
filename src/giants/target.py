@@ -324,7 +324,7 @@ class Target(object):
             # Normalize to the 5th percentile of model flux
             model -= np.percentile(model.flux, 5)
 
-        corrected_lc = lk.LightCurve(time=model.time, flux=raw_lc.normalize().flux.value-model.flux, flux_err=raw_lc.flux_err.value)
+        corrected_lc = lk.LightCurve(time=model.time, flux=self.raw_lc.normalize().flux.value-model.flux, flux_err=self.raw_lc.flux_err.value)
 
         return corrected_lc
 
