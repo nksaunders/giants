@@ -250,7 +250,12 @@ class Target(object):
         elif lc_source == 'lightkurve':
             lc = self.from_lightkurve(sectors=sectors, method=method, flatten=flatten)
 
+        elif lc_source == 'local':
+            lc = self.from_local_data('/data/users/nsaunders/cubes')
+
         lc = self._clean_data(lc, gauss_filter_lc=gauss_filter_lc)
+
+        return self
 
     def _clean_data(self, lc, gauss_filter_lc=True):
         """Hidden function to remove common sources of noise and outliers."""
