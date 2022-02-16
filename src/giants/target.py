@@ -101,9 +101,9 @@ class Target(object):
             lc = self.pld(self.tpf)
         else:
             if flatten:
-                lc = self.apply_pca_correction(self.tpf).flatten(201)
+                lc = self.apply_pca_corrector(self.tpf).flatten(201)
             else:
-                lc = self.apply_pca_correction(self.tpf)
+                lc = self.apply_pca_corrector(self.tpf)
             raw_lc = self.tpf.to_lightcurve(aperture_mask='threshold')
 
         # store as LCC for plotting later
@@ -114,9 +114,9 @@ class Target(object):
                 new_lc = self.pld(tpf)
             else:
                 if flatten:
-                    new_lc = self.apply_pca_correction(tpf).flatten(201)
+                    new_lc = self.apply_pca_corrector(tpf).flatten(201)
                 else:
-                    new_lc = self.apply_pca_correction(tpf)
+                    new_lc = self.apply_pca_corrector(tpf)
                 new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
             self.breakpoints.append(new_lc.time[-1].value)
             self.lcc.append(new_lc)
@@ -208,18 +208,18 @@ class Target(object):
 
         self.tpf = tpfc[0]
         if flatten:
-            lc = self.simple_pca(self.tpf).flatten(1001)
+            lc = self.apply_pca_corrector(self.tpf).flatten(1001)
         else:
-            lc = self.simple_pca(self.tpf)
+            lc = self.apply_pca_corrector(self.tpf)
 
         # store as LCC for plotting later
         self.lcc = lk.LightCurveCollection([lc])
         self.breakpoints = [lc.time[-1]]
         for tpf in tpfc[1:]:
             if flatten:
-                new_lc = self.simple_pca(tpf).flatten(1001)
+                new_lc = self.apply_pca_corrector(tpf).flatten(1001)
             else:
-                new_lc = self.simple_pca(tpf)
+                new_lc = self.apply_pca_corrector(tpf)
             self.breakpoints.append(new_lc.time[-1])
             self.lcc.append(new_lc)
             lc = lc.append(new_lc)
@@ -289,7 +289,7 @@ class Target(object):
         self.mask = mask
         return lc
 
-    def apply_pca_correction(self, tpf, zero_point_background=False):
+    def apply_pca_corrector(self, tpf, zero_point_background=False):
         """
         De-trending algorithm for `lightkurve` version of FFI pipeline.
 
