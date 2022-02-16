@@ -13,6 +13,9 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
 import ktransit
 from matplotlib.backends.backend_pdf import PdfPages
+from tess_stars2px import tess_stars2px_function_entry
+import astrocut
+from astrocut import CutoutFactory
 # import eleanor
 
 from . import PACKAGEDIR
@@ -343,6 +346,14 @@ class Target(object):
             self.has_target_info = True
         except:
             pass
+
+    def fetch_obs(self, ra, dec):
+
+        outID, outEclipLong, outEclipLat, outSec, outCam, outCcd, \
+                outColPix, outRowPix, scinfo = tess_stars2px_function_entry(
+                        self.ticid, float(ra), float(dec))
+
+        return outSec, outCam, outCcd
 
     def save_to_fits(self, outdir=None, lc_source='local'):
         """
