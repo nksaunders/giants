@@ -57,7 +57,7 @@ class Target(object):
         """Read in a csv of CVZ targets from a local file.
         """
         path = os.path.abspath(os.path.abspath(os.path.join(self.PACKAGEDIR, csv_path)))
-        table = pd.read_csv(path, skiprows=3, dtype='unicode')
+        table = pd.read_csv(path, dtype='unicode')
         return table
 
     def from_lightkurve(self, sectors=None, method='pca', flatten=True, **kwargs):
