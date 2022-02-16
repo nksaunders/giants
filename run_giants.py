@@ -1,7 +1,7 @@
 import sys
 import os
-from .plotting import plot_summary
-from .target import Target
+from giants.plotting import plot_summary
+from giants.target import Target
 
 
 if __name__ == '__main__':
