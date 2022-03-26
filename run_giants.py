@@ -14,6 +14,8 @@ if __name__ == '__main__':
         except:
             pass
 
+        lookup_table = pd.read_csv('/data/users/sgrunblatt/TESS_targetlists/TIC_lookup.csv')
+        
         N = np.nan
         for i in range(len(lookup_table)):
             if (ticid > lookup_table['TIC_start'].iloc[i]) and (ticid > lookup_table['TIC_start'].iloc[i]):
