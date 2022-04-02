@@ -1,5 +1,8 @@
 import sys
 import os
+import pandas as pd
+import numpy as np
+
 from giants.plotting import plot_summary
 from giants.target import Target
 
@@ -15,10 +18,10 @@ if __name__ == '__main__':
             pass
 
         lookup_table = pd.read_csv('/data/users/sgrunblatt/TESS_targetlists/TIC_lookup.csv')
-        
+
         N = np.nan
         for i in range(len(lookup_table)):
-            if (ticid > lookup_table['TIC_start'].iloc[i]) and (ticid > lookup_table['TIC_start'].iloc[i]):
+            if (int(ticid) > lookup_table['TIC_start'].iloc[i]) and (int(ticid) > lookup_table['TIC_start'].iloc[i]):
                 N = i
         if np.isnan(N):
             print(f'{ticid} not found in target lists!')
@@ -31,6 +34,6 @@ if __name__ == '__main__':
             target.fetch_and_clean_data(lc_source='local')
             plot_summary(target, outdir=outdir, save_data=True)
         else:
-            target.save_to_fits(outdir=outdir)
+        target.save_to_fits(outdir=outdir)
     except:
         print(f'Target {sys.argv[1]} failed.')
