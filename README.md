@@ -5,7 +5,7 @@ an open-source Python package to search for exoplanets around evolved stars
 **This package is currently under development. Please reach out if you experience any issues.**
 
 ## Read the papers here!
-- [TESS Giants Transiting Giants. I. A Noninflated Hot Jupiter Orbiting a Massive Subgiant (Saunders et al. 2022)](https://arxiv.org/abs/2108.02294)
+- [TESS Giants Transiting Giants. I. A Noninflated Hot Jupiter Orbiting a Massive Subgiant (Saunders et al. 2022)](https://arxiv.org/abs/2108.02294.pdf)
 - [TESS Giants Transiting Giants. II. The Hottest Jupiters Orbiting Evolved Stars (Grunblatt et al. 2022)](https://arxiv.org/pdf/2201.04140.pdf)
 
 ## To install the giants pipeline:
