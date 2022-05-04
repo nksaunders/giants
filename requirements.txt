@@ -7,3 +7,5 @@ pandas
 astropy
 sklearn
 ktransit
+tess-point
+astrocut
