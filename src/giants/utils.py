@@ -228,17 +228,20 @@ def find_ica_components(tpf):
 
     return comp_lcs
 
-def build_ktransit_model(ticid, lc, rprs=0.02, vary_transit=True):
+def build_ktransit_model(ticid, lc, period, t0, rprs=0.02, vary_transit=True):
     from ktransit import FitTransit
     fitT = FitTransit()
 
-    model = BoxLeastSquares(lc.time.value, lc.flux.value)
-    results = model.autopower(0.16, minimum_period=2., maximum_period=21.)
-    period = results.period[np.argmax(results.power)]
-    t0 = results.transit_time[np.argmax(results.power)]
-    if rprs is None:
-        depth = results.depth[np.argmax(results.power)]
-        rprs = depth ** 2
+    t0 = t0.value
+    period = period.value
+
+    # model = BoxLeastSquares(lc.time.value, lc.flux.value)
+    # results = model.autopower(0.16, minimum_period=2., maximum_period=21.)
+    # period = results.period[np.argmax(results.power)]
+    # t0 = results.transit_time[np.argmax(results.power)]
+    # if rprs is None:
+    #     depth = results.depth[np.argmax(results.power)]
+    #     rprs = depth ** 2
 
     fitT.add_guess_star(rho=0.022, zpt=0, ld1=0.6505,ld2=0.1041) #come up with better way to estimate this using AS
     fitT.add_guess_planet(T0=t0, period=period, impact=0.5, rprs=rprs)

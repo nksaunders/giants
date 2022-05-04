@@ -86,13 +86,6 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
 
     dims=(18, 24)
 
-    # generate ktransit fit
-    model_lc, ktransit_model = fit_transit_model(target)
-    result = ktransit_model.fitresult[1:]
-    kt_period = result[0]
-    kt_t0 = result[2]
-    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
-
     # fit BLS
     bls_results = get_bls_results(target.lc)
     period = bls_results.period[np.argmax(bls_results.power)]
@@ -101,13 +94,20 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     depth_snr = depth / np.std(target.lc.flux.value)
     # depth_snr = bls_results.depth_snr[np.argmax(bls_results.power)]
 
-    scaled_residuals = np.median(fit_transit_model(target)[1].residuals()) / np.std(target.lc.flux.value)
+    # generate ktransit fit
+    model_lc, ktransit_model = fit_transit_model(target, period, t0)
+    result = ktransit_model.fitresult[1:]
+    kt_period = result[0]
+    kt_t0 = result[2]
+    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
+
+    scaled_residuals = np.median(fit_transit_model(target, period, t0)[1].residuals()) / np.std(target.lc.flux.value)
 
     fig = plt.gcf()
     fig.suptitle(f'TIC {target.ticid}', fontweight='bold', size=24, y=0.93)
 
     ax = plt.subplot2grid(dims, (0,0), colspan=24, rowspan=3)
-    plot_raw_lc(target, ax)
+    plot_raw_lc(target, model_lc, ax)
     param_string = stellar_params(target)
     ax.set_title(param_string, size=20)
 
@@ -168,22 +168,21 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
         except:
             fig.savefig(str(outdir)+str(target.ticid)+'_summary.png', bbox_inches='tight')
 
-def fit_transit_model(target):
+def fit_transit_model(target, period, t0):
     """
 
     """
 
-    ktransit_model = build_ktransit_model(target.ticid, target.lc)
+    ktransit_model = build_ktransit_model(target.ticid, target.lc, period, t0)
 
     model_lc = lk.LightCurve(time=target.lc.time, flux=ktransit_model.transitmodel)
     return model_lc, ktransit_model
 
-def plot_raw_lc(target, ax=None):
+def plot_raw_lc(target, model_lc, ax=None):
     """
     """
     if ax is None:
         _, ax = plt.subplots(1)
-
 
     target.lc.scatter(ax=ax, c='k', s=50)
     ax.set_xlim(target.lc.time.value[0], target.lc.time.value[-1])
@@ -193,6 +192,9 @@ def plot_raw_lc(target, ax=None):
         except:
             ax.axvline(b, linestyle='--', color='r')
 
+    depth = 0 - np.min(model_lc.flux.value)
+    ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
+
 def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
     res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
@@ -201,12 +203,12 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
 
     ax.set_xticklabels([])
     ax.set_xlim(-.1*per, .1*per)
-    ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
 
     flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
     flux_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='dodgerblue', s=420)
     model_lc.fold(per, t0).plot(ax=ax, c='r', lw=3, zorder=10000)
 
+    ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
     ax.set_ylabel('Normalized Flux')
 
 def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):

@@ -42,6 +42,7 @@ class Target(object):
             self.target_list = []
         elif csv_path is 'default':
             csv_path = 'data/ticgiants_bright_v2_skgrunblatt.csv'
+            self.target_list = self.get_targets(csv_path)
         else:
             self.target_list = self.get_targets(csv_path)
         self.get_target_info(self.ticid)
