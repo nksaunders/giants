@@ -30,7 +30,7 @@ __all__ = ['Target']
 class Target(object):
     """
     """
-    def __init__(self, ticid, cache_path=None, silent=False, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
+    def __init__(self, ticid, cache_path=None, silent=False, csv_path=None):
         self.cache_path = cache_path
         self.silent = silent
         self.ticid = ticid
@@ -40,6 +40,8 @@ class Target(object):
         self.has_target_info = False
         if (csv_path is None) or (csv_path==''):
             self.target_list = []
+        elif csv_path is 'default':
+            csv_path = 'data/ticgiants_bright_v2_skgrunblatt.csv'
         else:
             self.target_list = self.get_targets(csv_path)
         self.get_target_info(self.ticid)
