@@ -45,15 +45,16 @@ class Target(object):
             self.target_list = self.get_targets(csv_path)
         else:
             self.target_list = self.get_targets(csv_path)
+        self.search_result = lk.search_tesscut(f'TIC {ticid}')
         self.get_target_info(self.ticid)
 
     def _find_sectors(self, ticid):
         """Hidden function to read sectors from a search result."""
         sectors = []
 
-        search_result = lk.search_tesscut(f'TIC {ticid}')
-        for sector in search_result.table['description']:
+        for sector in self.search_result.table['description']:
             sectors.append(int(re.search(r'\d+', sector).group()))
+
         return sectors
 
     def get_targets(self, csv_path='data/ticgiants_bright_v2_skgrunblatt.csv'):
@@ -348,7 +349,9 @@ class Target(object):
             self.dec = self.target_row['dec'].values[0]
             self.has_target_info = True
         except:
-            pass
+            sample_tpf = self.search_result[0].download(cutout_size=1, download_dir='/data/users/nsaunders/cache/lightkurve')
+            self.ra = sample_tpf.ra
+            self.dec = sample_tpf.dec
 
     def fetch_obs(self, ra, dec):
 
