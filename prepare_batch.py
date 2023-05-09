@@ -11,7 +11,7 @@ def create_batch_file(inlist, outdir, batchfile_path, local=False):
     # create the batch file
     for tic in targets:
         if local:
-            command = f'python run_giants.py {tic} {outdir} local \n'
+            command = f'python run_giants.py {tic} {outdir} --local \n'
         else:
             command = f'python run_giants.py {tic} {outdir} \n'
         with open(f'{batchfile_path}.tot', 'a+') as file:
