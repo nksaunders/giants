@@ -1,37 +1,20 @@
 import os
-import re
-import sys
 import numpy as np
-import pandas as pd
 import scipy
 import matplotlib.pyplot as plt
 import matplotlib
-from astropy.stats import BoxLeastSquares, mad_std, LombScargle
-import astropy.stats as ass
+from astropy.stats import BoxLeastSquares
 from astropy.coordinates import SkyCoord, Angle
 import lightkurve as lk
-import warnings
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import astropy.units as u
-import ktransit
-import matplotlib.ticker as mtick
-# import eleanor
-try:
-    from . import lomb
-    from .utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
-except:
-    import lomb
-    from utils import build_ktransit_model, _individual_ktransit_dur, find_ica_components, get_cutout
+from astroquery.mast import Catalogs
 
-
-#optional imports
 try:
-    from sklearn.decomposition import FastICA
+    from .utils import build_ktransit_model, _individual_ktransit_dur
 except:
-    print('ICA not available.')
+    from utils import build_ktransit_model, _individual_ktransit_dur
 
 __all__ = ['plot_summary']
-
 
 def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
     """Make the Gaia Figure Elements"""
@@ -359,50 +342,29 @@ def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
         cell.set_height(0.175)
 
 def stellar_params(target):
-    # from astroquery.mast import Catalogs
-    # catalog_data = Catalogs.query_criteria(objectname=f'TIC {target.ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
-    #
-    # ra = catalog_data['ra'][0]
-    # dec = catalog_data['dec'][0]
-    # coords = f'({ra:.2f}, {dec:.2f})'
-    # rstar = catalog_data['rad'][0]
-    # teff = catalog_data['Teff'][0]
-    # if np.isnan(rstar):
-    #     rstar = '?'
-    # else:
-    #     rstar = f'{rstar:.2f}'
-    # if np.isnan(teff):
-    #     teff = '?'
-    # else:
-    #     teff = f'{teff:.0f}'
-    # logg = catalog_data['logg'][0]
-    # if np.isnan(logg):
-    #     logg = '?'
-    # else:
-    #     logg = f'{logg:.2f}'
-    # V = catalog_data['Vmag'][0]
-
-    if target.has_target_info:
-        coords = f'({float(target.ra):.2f}, {float(target.dec):.2f})'
-        rstar = float(target.target_row['rad'].values[0])
-        teff = float(target.target_row['Teff'].values[0])
-        if np.isnan(rstar):
-            rstar = '?'
-        else:
-            rstar = f'{rstar:.2f}'
-        if np.isnan(teff):
-            teff = '?'
-        else:
-            teff = f'{teff:.0f}'
-        logg = float(target.target_row['logg'].values[0])
-        if np.isnan(logg):
-            logg = '?'
-        else:
-            logg = f'{logg:.2f}'
-        V = target.target_row['Vmag'].values[0]
-
-        param_string = rf'(RA, dec)={coords}, R_star={rstar} $R_\odot$, logg={logg}, Teff={teff} K, V={float(V):.2f}'
+        
+    catalog_data = Catalogs.query_criteria(objectname=f'TIC {target.ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
+    
+    ra = catalog_data['ra'][0]
+    dec = catalog_data['dec'][0]
+    coords = f'({ra:.2f}, {dec:.2f})'
+    rstar = catalog_data['rad'][0]
+    teff = catalog_data['Teff'][0]
+    if np.isnan(rstar):
+        rstar = '?'
     else:
-        param_string = ''
+        rstar = f'{rstar:.2f}'
+    if np.isnan(teff):
+        teff = '?'
+    else:
+        teff = f'{teff:.0f}'
+    logg = catalog_data['logg'][0]
+    if np.isnan(logg):
+        logg = '?'
+    else:
+        logg = f'{logg:.2f}'
+    V = catalog_data['Vmag'][0]
+
+    param_string = rf'(RA, dec)={coords}, R_star={rstar} $R_\odot$, logg={logg}, Teff={teff} K, V={float(V):.2f}'
 
     return param_string
