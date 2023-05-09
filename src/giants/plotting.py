@@ -126,7 +126,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
 
     ax = plt.subplot2grid(dims, (13,9), colspan=6, rowspan=4)
     if target.has_target_info:
-        plot_table(target, model_lc, ktransit_model, depth_snr,
+        plot_table(target, ktransit_model, depth_snr,
                    dur, scaled_residuals, ax)
     else:
         ax.axis('off')
@@ -320,14 +320,13 @@ def plot_tpf(target, ax):
     ax = target.tpf.plot(ax=ax, show_colorbar=True, frame=fnumber, title=f'TIC {target.ticid}, cadence {fnumber}')
     ax = add_gaia_figure_elements(target.tpf, ax)
 
-def plot_table(target, model_lc, ktransit_model, depth_snr, dur, resid, ax):
+def plot_table(target, ktransit_model, depth_snr, dur, resid, ax):
     result = ktransit_model.fitresult[1:]
 
     col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', r'R$_P$ (R$_J$)', 'Duration (hours)', 'Depth SNR', 'Scaled Likelihood']
     values = [f'{val:.3f}' for val in result]
 
-    rstar = float(target.target_row['rad'].values[0])
-    values.append(f'{float(values[-1]) * rstar * 9.731:.3f}')
+    values.append(f'{float(values[-1]) * target.rstar * 9.731:.3f}')
     values.append(f'{dur.value:.3f}')
     values.append(f'{depth_snr:.3f}')
     values.append(f'{resid:.3f}')

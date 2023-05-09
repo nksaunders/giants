@@ -49,6 +49,8 @@ class Target(object):
         self.rstar = catalog_data['rad'][0]
         self.teff = catalog_data['Teff'][0]
 
+        self.has_target_info = True
+
     def check_available_sectors(self, ticid):
         """
         Helper function to check which sectors are available in the TESSCut search result.
@@ -94,7 +96,6 @@ class Target(object):
 
         # download data
         tpfc = lk.TargetPixelFileCollection([])
-        self.tpf = tpfc[0]
         for search_row in masked_search_result:
             try:
                 tpfc.append(search_row.download(cutout_size=11))
@@ -102,6 +103,7 @@ class Target(object):
                 continue
 
         # apply the pca background correction
+        self.tpf = tpfc[0]
         lc = self.apply_pca_corrector(self.tpf)
         raw_lc = self.tpf.to_lightcurve(aperture_mask='threshold')
 
@@ -133,7 +135,6 @@ class Target(object):
 
         self.get_target_info(self.ticid)
 
-        # sectors = self._find_sectors(self.ticid)
         obs = self.fetch_obs(self.ra, self.dec)
         sectors = obs[0]
         if not self.silent:
@@ -304,7 +305,7 @@ class Target(object):
         if outdir is None:
             outdir = os.path.join(self.PACKAGEDIR, 'outputs')
 
-        sectors = self._find_sectors(self.ticid)
+        sectors = self.check_available_sectors(self.ticid)
 
         for s in sectors:
             self.fetch_and_clean_data(lc_source='lightkurve', sectors=s, gauss_filter_lc=False)

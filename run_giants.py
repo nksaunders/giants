@@ -13,10 +13,10 @@ if __name__ == '__main__':
     parser.add_argument('ticid', type=str, help='TICID of the target to run giants on.')
     parser.add_argument('outdir', type=str, help='Path to the output directory.')
     parser.add_argument('--local', action='store_true', help='Flag to indicate whether to use local data.')
+    parser.add_argument('--save_data', action='store_true', help='Flag to indicate whether to save the data.')
     args = parser.parse_args()
 
     try:
-    
         if args.local:
             lookup_table = pd.read_csv('/data/users/sgrunblatt/TESS_targetlists/TIC_lookup.csv')
 
@@ -32,10 +32,13 @@ if __name__ == '__main__':
         else:
             csv_path = None
 
-        target = Target(ticid=args.ticid, csv_path=csv_path)
+        target = Target(ticid=args.ticid)
 
-        target.fetch_and_clean_data(lc_source='local')
-        plot_summary(target, outdir=args.outdir, save_data=True)
+        if args.local:
+            target.fetch_and_clean_data(lc_source='local')
+        else:
+            target.fetch_and_clean_data(lc_source='lightkurve')
+        plot_summary(target, outdir=args.outdir, save_data=args.save_data)
         target.save_to_fits(outdir=args.outdir)
     except:
         print(f'Target {sys.argv[1]} failed.')
