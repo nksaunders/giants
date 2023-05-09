@@ -38,7 +38,7 @@ if __name__ == '__main__':
             target.fetch_and_clean_data(lc_source='local')
         else:
             target.fetch_and_clean_data(lc_source='lightkurve')
-        plot_summary(target, outdir=args.outdir, save_data=args.save_data)
+        plot_summary(target, outdir=args.outdir, save_data=False)
         target.save_to_fits(outdir=args.outdir)
     except:
         print(f'Target {sys.argv[1]} failed.')
