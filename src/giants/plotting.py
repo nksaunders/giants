@@ -17,7 +17,23 @@ except:
 __all__ = ['plot_summary']
 
 def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
-    """Make the Gaia Figure Elements"""
+    """
+    Add Gaia DR2 sources to a TPF plot.
+
+    Parameters
+    ----------
+    tpf : lightkurve.TargetPixelFile
+        Target pixel file to plot.
+    fig : matplotlib.pyplot.figure
+        Figure to plot on.
+    magnitude_limit : float
+        Magnitude limit to use for Gaia query.
+
+    Returns
+    -------
+    fig : matplotlib.pyplot.figure
+        Figure with Gaia sources plotted.
+    """
     # Get the positions of the Gaia sources
     c1 = SkyCoord(tpf.ra, tpf.dec, frame='icrs', unit='deg')
     # Use pixel scale for query size
@@ -59,7 +75,18 @@ def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
 
 def plot_summary(target, outdir='', save_data=False, save_fig=True):
     """
+    Produce a summary plot for a given target.
 
+    Parameters
+    ----------
+    target : giants.Target
+        Target object to plot.
+    outdir : str
+        Path to the output directory.
+    save_data : bool
+        Flag to indicate whether to save the data.
+    save_fig : bool
+        Flag to indicate whether to save the figure.
     """
 
     font = {'family' : 'sans',
@@ -75,7 +102,6 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     t0 = bls_results.transit_time[np.argmax(bls_results.power)]
     depth = bls_results.depth[np.argmax(bls_results.power)]
     depth_snr = depth / np.std(target.lc.flux.value)
-    # depth_snr = bls_results.depth_snr[np.argmax(bls_results.power)]
 
     # generate ktransit fit
     model_lc, ktransit_model = fit_transit_model(target, period, t0)
@@ -86,44 +112,55 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
 
     scaled_residuals = np.median(fit_transit_model(target, period, t0)[1].residuals()) / np.std(target.lc.flux.value)
 
+    """Create the figure."""
     fig = plt.gcf()
     fig.suptitle(f'TIC {target.ticid}', fontweight='bold', size=24, y=0.93)
 
+    # plot the light curve
     ax = plt.subplot2grid(dims, (0,0), colspan=24, rowspan=3)
     plot_raw_lc(target, model_lc, ax)
+
+    # set title to include stellar params
     param_string = stellar_params(target)
     ax.set_title(param_string, size=20)
 
+    # plot the folded light curve
     ax = plt.subplot2grid(dims, (4,0), colspan=16, rowspan=3)
     plot_folded(target.lc, period.value, t0.value, depth, ax)
 
+    # plot the TPF
     ax = plt.subplot2grid(dims, (4,17), colspan=7, rowspan=7)
     plot_tpf(target, ax)
 
+    # plot the odd and even transits
     ax = plt.subplot2grid(dims, (8,0), colspan=8, rowspan=3)
     plot_even(target.lc, period.value, t0.value, depth, ax)
-
     ax = plt.subplot2grid(dims, (8,8), colspan=8, rowspan=3)
     plot_odd(target.lc, period.value, t0.value, depth, ax)
     plt.subplots_adjust(wspace=0)
     ax.set_yticklabels([])
     ax.set_ylabel('')
 
+    # plot the transit model
     ax = plt.subplot2grid(dims, (12,0), colspan=8, rowspan=4)
     plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
 
+    # plot the residuals
     ax = plt.subplot2grid(dims, (16,0), colspan=8, rowspan=2)
     plot_tr_bottom(target.lc, model_lc, kt_period, kt_t0, ax)
     plt.subplots_adjust(hspace=0)
 
+    # plot the BLS periodogram
     ax = plt.subplot2grid(dims, (12,17), colspan=7, rowspan=3)
     plot_bls(target.lc, ax, results=bls_results)
     plt.subplots_adjust(hspace=0)
 
+    # plot the FFT
     ax = plt.subplot2grid(dims, (15,17), colspan=7, rowspan=3)
     freq, fts = plot_fft(target.lc, ax)
     plt.subplots_adjust(hspace=0)
 
+    # include the transit stats table
     ax = plt.subplot2grid(dims, (13,9), colspan=6, rowspan=4)
     if target.has_target_info:
         plot_table(target, ktransit_model, depth_snr,
@@ -135,9 +172,11 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     fig.patch.set_facecolor('white')
     fig.set_size_inches([d-1 for d in dims[::-1]])
 
+    # save the transit stats
     with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
                 file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur} {scaled_residuals}\n")
 
+    # save the data
     if save_data:
         try:
             np.savetxt(outdir+'/timeseries/'+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time.value, target.lc.flux.value]), fmt='%.8f', delimiter=' ')
@@ -154,7 +193,23 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
 
 def fit_transit_model(target, period, t0):
     """
+    Fit a transit model to a given target using the ktransit package.
 
+    Parameters
+    ----------
+    target : giants.Target
+        Target object to fit.
+    period : float
+        Orbital period of the planet.
+    t0 : float
+        Epoch of the first transit.
+
+    Returns
+    -------
+    model_lc : lightkurve.LightCurve
+        Light curve of the transit model.
+    ktransit_model : ktransit.ktransit.LCModel
+        ktransit model object.
     """
 
     ktransit_model = build_ktransit_model(target.ticid, target.lc, period, t0)
@@ -164,6 +219,16 @@ def fit_transit_model(target, period, t0):
 
 def plot_raw_lc(target, model_lc, ax=None):
     """
+    Plot the raw light curve of a given target.
+
+    Parameters
+    ----------
+    target : giants.Target
+        Target object to plot.
+    model_lc : lightkurve.LightCurve
+        Light curve of the transit model.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
     """
     if ax is None:
         _, ax = plt.subplots(1)
@@ -180,6 +245,22 @@ def plot_raw_lc(target, model_lc, ax=None):
     ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
 
 def plot_tr_top(flux_lc, model_lc, per, t0, ax):
+    """
+    Plot the transit model on top of the raw light curve.    
+
+    Parameters
+    ----------
+    flux_lc : lightkurve.LightCurve
+        Light curve of the target.
+    model_lc : lightkurve.LightCurve
+        Light curve of the transit model.
+    per : float
+        Orbital period of the planet.
+    t0 : float
+        Epoch of the first transit.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
+    """
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
     res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
 
@@ -196,6 +277,22 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     ax.set_ylabel('Normalized Flux')
 
 def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
+    """
+    Plot the residuals of the transit model.
+    
+    Parameters
+    ----------
+    flux_lc : lightkurve.LightCurve
+        Light curve of the target.
+    model_lc : lightkurve.LightCurve
+        Light curve of the transit model.
+    per : float
+        Orbital period of the planet.
+    t0 : float
+        Epoch of the first transit.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
+    """
     res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
     res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
     res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
@@ -205,21 +302,27 @@ def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
     ax.set_ylabel('Residuals (ppm)')
 
 def plot_fft(lc, ax=None):
+    """
+    Plot the FFT of a given light curve.
+    
+    Parameters
+    ----------
+    lc : lightkurve.LightCurve
+        Light curve to plot.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
+
+    Returns
+    -------
+    freq : numpy.ndarray
+        Frequencies of the FFT.
+    fts : numpy.ndarray
+        Power of the FFT.
+    """
     if ax is None:
         _, ax = plt.subplots(1)
 
-    # osample=5.
     nyq=283.
-    #
-    # time = lc.time
-    # flux = lc.flux
-    #
-    # # calculate FFT
-    # freq, amp, nout, jmax, prob = lomb.fasper(time, flux, osample, 3.)
-    # freq = 1000. * freq / 86.4
-    # bin = freq[1] - freq[0]
-    # fts = 2. * amp * np.var(flux * 1e6) / (np.sum(amp) * bin)
-
     ls = lc.to_periodogram('ls')
     freq = ls.frequency.to(u.uHz).value
     fts = ls.power.value
@@ -240,21 +343,39 @@ def plot_fft(lc, ax=None):
     return freq, fts
 
 def get_bls_results(lc):
+    """
+    Get the BLS results for a given light curve.
+    
+    Parameters
+    ----------
+    lc : lightkurve.LightCurve
+        Light curve to fit.
+        
+    Returns
+    -------
+    results : astropy.stats.BoxLeastSquares
+        Astropy BLS object.        
+    """
     model = BoxLeastSquares(lc.time, lc.flux)
     results = model.power(np.linspace(1., 25., 1000), 0.16)
-    # results = model.autopower(0.16, minimum_period=1., maximum_period=25.)
     return results
 
 def plot_bls(lc, ax, results=None):
+    """
+    Plot the BLS periodogram for a given light curve.
 
-    time, flux, flux_err = lc.time, lc.flux, lc.flux_err
-
+    Parameters
+    ----------
+    lc : lightkurve.LightCurve
+        Light curve to plot.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
+    results : astropy.stats.BoxLeastSquares
+        Astropy BLS object.
+    """
     if results is None:
         results = get_bls_results(lc)
     period = results.period[np.argmax(results.power)]
-    t0 = results.transit_time[np.argmax(results.power)]
-    depth = results.depth[np.argmax(results.power)]
-    depth_snr = results.depth_snr[np.argmax(results.power)]
 
     ax.plot(results.period, results.power, "k", lw=0.5)
     ax.set_xlim(results.period.min().value, results.period.max().value)

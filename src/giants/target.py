@@ -21,6 +21,13 @@ __all__ = ['Target']
 class Target(object):
     """
     A class to hold a TESS target and its data.
+
+    Parameters
+    ----------
+    ticid : int
+        TIC ID of the target
+    silent : bool
+        suppress print statements
     """
 
     def __init__(self, ticid, silent=False):
@@ -40,6 +47,11 @@ class Target(object):
     def get_target_info(self, ticid):
         """
         Get basic information about the target from the TIC catalog.
+
+        Parameters
+        ----------
+        ticid : int
+            TIC ID of the target
         """
         catalog_data = Catalogs.query_criteria(objectname=f'TIC {ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
         
@@ -54,6 +66,16 @@ class Target(object):
     def check_available_sectors(self, ticid):
         """
         Helper function to check which sectors are available in the TESSCut search result.
+
+        Parameters
+        ----------
+        ticid : int
+            TIC ID of the target
+
+        Returns
+        -------
+        available_sectors : list of ints
+            list of available sectors
         """
         available_sectors = []
         for sector in self.search_result.table['description']:
@@ -70,6 +92,10 @@ class Target(object):
         ----------
         sectors : int, list of ints
             desired sector number or list of sector numbers
+        flatten : bool
+            optionally flatten the light curve
+        **kwargs : dict
+            additional keyword arguments to pass to `lightkurve.search_tesscut`
 
         Returns
         -------
@@ -131,6 +157,20 @@ class Target(object):
         """
         Retrieve data from local data cube.
         Data cubes should be stored in the format 's0001-1-1.fits'
+
+        Parameters
+        ----------
+        local_data_path : str
+            path to local data cube
+        sectors : int, list of ints
+            desired sector number or list of sector numbers
+        flatten : bool
+            optionally flatten the light curve
+
+        Returns
+        -------
+        lc : `lightkurve.LightCurve` object
+            background-corrected flux time series
         """
 
         self.get_target_info(self.ticid)
@@ -180,6 +220,21 @@ class Target(object):
         return lc
     
     def fetch_obs(self, ra, dec):
+        """
+        Query MAST for TESS observations of a given target.
+
+        Parameters
+        ----------
+        ra : float
+            right ascension of target
+        dec : float
+            declination of target
+
+        Returns
+        -------
+        obs : list of lists
+            list of observations, each of which is a list of [sector, camera, ccd]
+        """
 
         outID, outEclipLong, outEclipLat, outSec, outCam, outCcd, \
                 outColPix, outRowPix, scinfo = tess_stars2px_function_entry(
@@ -202,6 +257,8 @@ class Target(object):
         ----------
         tpf : `lightkurve.TargetPixelFile` object
             target pixel file for desired target
+        zero_point_background : bool
+            optionally set the background to zero
 
         Returns
         -------
@@ -241,12 +298,21 @@ class Target(object):
 
         Parameters
         ----------
-        lc_source : str, 'lightkurve' or 'eleanor'
+        lc_source : str, 'lightkurve' or 'local'
             pipeline used to access data
+        flatten : bool
+            optionally flatten the light curve
         sectors : int, list of ints
             desired sector number or list of sector numbers
         gauss_filer_lc : bool
             optionally apply Gaussian smoothing with a ~2 day filter (good for planets, bad for stars)
+        **kwargs : dict
+            additional keyword arguments to pass to `lightkurve.search_tesscut`
+
+        Returns
+        -------
+        self : `Target` object
+            returns self for chaining
         """
        
         if lc_source == 'lightkurve':
@@ -299,6 +365,13 @@ class Target(object):
         ----------
         outdir : str or path
             location of fits output
+        lc_source : str, 'lightkurve' or 'local'
+            pipeline used to access data
+
+        Returns
+        -------
+        self : `Target` object
+            returns self for chaining
         """
         self.silent = True
 
