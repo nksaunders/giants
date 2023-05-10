@@ -389,23 +389,25 @@ def plot_bls(lc, ax, results=None):
         ax.axvline(period.value / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
 
 def plot_folded(lc, period, t0, depth, ax):
+    """
+    Plot the folded light curve for a given light curve.
 
+    Parameters
+    ----------
+    lc : lightkurve.LightCurve
+        Light curve to plot.
+    period : float
+        Orbital period of the planet.
+    t0 : float
+        Epoch of the first transit.
+    depth : float
+        Depth of the transit.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.  
+    """
     if ax is None:
         _, ax = plt.subplots(1)
 
-    # time, flux, flux_err = lc.time, lc.flux, lc.flux_err
-    #
-    # phase = (t0 % period) / period
-    # foldedtimes = (((time.value - phase * period) / period) % 1)
-    # foldedtimes[foldedtimes > 0.5] -= 1
-    # foldtimesort = np.argsort(foldedtimes)
-    # foldfluxes = flux[foldtimesort]
-    #
-    # ax.plot(foldedtimes, flux, 'k.', markersize=2)
-    # ax.plot(np.sort(foldedtimes), scipy.ndimage.filters.median_filter(foldfluxes, 40), lw=2, color='r')#, label=f'P={period:.2f} days, dur={dur:.2f} hrs')
-    # ax.set_xlabel('Phase')
-    # ax.set_ylabel('Flux')
-    # ax.set_xlim(-0.5, 0.5)
     lc.fold(period, t0).scatter(ax=ax, c='gray', s=25,
                                 label=rf'$P={period:.2f}$ d')
     lc.fold(period, t0).bin(.1).plot(ax=ax, c='r', lw=2)
@@ -414,7 +416,22 @@ def plot_folded(lc, period, t0, depth, ax):
     plt.grid(True)
 
 def plot_odd(lc, period, t0, depth, ax):
-
+    """
+    Plot the odd transits for a given light curve.
+    
+    Parameters
+    ----------
+    lc : lightkurve.LightCurve
+        Light curve to plot.
+    period : float
+        Orbital period of the planet.
+    t0 : float
+        Epoch of the first transit.
+    depth : float
+        Depth of the transit.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
+    """
     if ax is None:
         _, ax = plt.subplots(1)
 
@@ -426,7 +443,22 @@ def plot_odd(lc, period, t0, depth, ax):
     plt.grid(True)
 
 def plot_even(lc, period, t0, depth, ax):
+    """
+    Plot the even transits for a given light curve.
 
+    Parameters
+    ----------
+    lc : lightkurve.LightCurve
+        Light curve to plot.
+    period : float
+        Orbital period of the planet.
+    t0 : float
+        Epoch of the first transit.
+    depth : float
+        Depth of the transit.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
+    """
     if ax is None:
         _, ax = plt.subplots(1)
 
@@ -438,11 +470,39 @@ def plot_even(lc, period, t0, depth, ax):
     plt.grid(True)
 
 def plot_tpf(target, ax):
+    """
+    Plot the TPF for a given target.
+
+    Parameters
+    ----------
+    target : giants.Target
+        Target object to plot.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
+    """
     fnumber = 100
     ax = target.tpf.plot(ax=ax, show_colorbar=True, frame=fnumber, title=f'TIC {target.ticid}, cadence {fnumber}')
     ax = add_gaia_figure_elements(target.tpf, ax)
 
 def plot_table(target, ktransit_model, depth_snr, dur, resid, ax):
+    """
+    Include a table of transit parameters in the summary plot.
+
+    Parameters
+    ----------
+    target : giants.Target
+        Target object to plot.
+    ktransit_model : ktransit.ktransit.LCModel
+        ktransit model object.
+    depth_snr : float
+        Depth SNR of the transit.
+    dur : astropy.units.quantity.Quantity
+        Duration of the transit.
+    resid : float
+        Scaled residuals of the transit.
+    ax : matplotlib.pyplot.axis
+        Axis to plot on.
+    """
     result = ktransit_model.fitresult[1:]
 
     col_labels = ['Period (days)', 'b', 't0', 'Rp/Rs', r'R$_P$ (R$_J$)', 'Duration (hours)', 'Depth SNR', 'Scaled Likelihood']
@@ -463,7 +523,19 @@ def plot_table(target, ktransit_model, depth_snr, dur, resid, ax):
         cell.set_height(0.175)
 
 def stellar_params(target):
-        
+    """
+    Retrieve stellar parameters for a given target.
+
+    Parameters
+    ----------
+    target : giants.Target
+        Target object to plot.
+
+    Returns
+    -------
+    param_string : str
+        String of stellar parameters.
+    """
     catalog_data = Catalogs.query_criteria(objectname=f'TIC {target.ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
     
     ra = catalog_data['ra'][0]
