@@ -31,7 +31,7 @@ class Target(object):
     """
 
     def __init__(self, ticid, silent=False):
-
+        
         # parse TIC ID
         self.ticid = ticid
         if isinstance(self.ticid, str):
@@ -43,6 +43,11 @@ class Target(object):
 
         self.search_result = lk.search_tesscut(f'TIC {ticid}')
         self.get_target_info(self.ticid)
+        self.available_sectors = self.check_available_sectors(self.ticid)
+
+    def __repr__(self):
+
+        return f'giants.Target: TIC {self.ticid} (available sectors: {", ".join([str(s) for s in self.available_sectors])})'
 
     def get_target_info(self, ticid):
         """
