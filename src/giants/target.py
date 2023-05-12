@@ -31,7 +31,7 @@ class Target(object):
     """
 
     def __init__(self, ticid, silent=False):
-        
+
         # parse TIC ID
         self.ticid = ticid
         if isinstance(self.ticid, str):
@@ -43,7 +43,7 @@ class Target(object):
 
         self.search_result = lk.search_tesscut(f'TIC {ticid}')
         self.get_target_info(self.ticid)
-        self.available_sectors = self.check_available_sectors(self.ticid)
+        self.available_sectors = self.check_available_sectors()
 
     def __repr__(self):
 
@@ -68,7 +68,7 @@ class Target(object):
 
         self.has_target_info = True
 
-    def check_available_sectors(self, ticid):
+    def check_available_sectors(self, ticid=None):
         """
         Helper function to check which sectors are available in the TESSCut search result.
 
@@ -82,8 +82,13 @@ class Target(object):
         available_sectors : list of ints
             list of available sectors
         """
+        if ticid is not None:
+            temp_search_result = lk.search_tesscut(f'TIC {ticid}')
+        else:
+            temp_search_result = self.search_result
+        
         available_sectors = []
-        for sector in self.search_result.table['description']:
+        for sector in temp_search_result.table['description']:
             available_sectors.append(int(re.search(r'\d+', sector).group()))
 
         return available_sectors
@@ -107,9 +112,6 @@ class Target(object):
         lc : `lightkurve.LightCurve` object
             background-corrected flux time series
         """
-        
-        # check which sectors are available
-        available_sectors = self.check_available_sectors(self.ticid)
 
         # apply sector mask
         if sectors is not None:
@@ -118,7 +120,7 @@ class Target(object):
                 sectors = [sectors]
 
             search_result_mask = []
-            for sector in available_sectors:
+            for sector in self.available_sectors:
                 search_result_mask.append(sector in sectors)
 
             masked_search_result = self.search_result[search_result_mask]
@@ -383,9 +385,7 @@ class Target(object):
         if outdir is None:
             outdir = os.path.join(self.PACKAGEDIR, 'outputs')
 
-        sectors = self.check_available_sectors(self.ticid)
-
-        for s in sectors:
+        for s in self.available_sectors:
             self.fetch_and_clean_data(lc_source='lightkurve', sectors=s, gauss_filter_lc=False)
 
             fname_corr = f'{self.ticid}_s{s:02d}_corr.fits'
