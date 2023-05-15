@@ -265,7 +265,8 @@ class Target(object):
         tpf : `lightkurve.TargetPixelFile` object
             target pixel file for desired target
         zero_point_background : bool
-            optionally set the background to zero
+            optionally normalize light curve to the 5th percentile of model flux. can be useful for targets 
+            which raise warnings when flattened. default is False.
 
         Returns
         -------
