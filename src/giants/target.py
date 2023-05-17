@@ -273,26 +273,30 @@ class Target(object):
         corrected_lc : `lightkurve.LightCurve` object
             background-corrected light curve
         """
+        # define threshold aperture mask
         aper = tpf._parse_aperture_mask('threshold')
         raw_lc = tpf.to_lightcurve(aperture_mask=aper)
+
+        # remove NaNs and negative flux values
         mask = (raw_lc.flux_err > 0) | (~np.isnan(raw_lc.flux))
         self.raw_lc = raw_lc[mask]
         tpf = tpf[mask]
 
-
+        # create design matrix from pixels outside of aperture
         regressors = tpf.flux[:, ~aper]
-
         dm = lk.DesignMatrix(regressors, name='regressors')
 
+        # perform PCA on design matrix and append column of constants
         dm = dm.pca(10)
         dm = dm.append_constant()
 
+        # fit weights to design matrix and remove background noise model
         corrector = lk.RegressionCorrector(self.raw_lc.normalize())
         corrected_lc_unnormalized = corrector.correct(dm)
         model = corrector.model_lc
 
+        # optionally normalize to the 5th percentile of model flux
         if zero_point_background:
-            # Normalize to the 5th percentile of model flux
             model -= np.percentile(model.flux, 5)
 
         corrected_lc = lk.LightCurve(time=model.time, flux=self.raw_lc.normalize().flux.value-model.flux, flux_err=self.raw_lc.flux_err.value)
