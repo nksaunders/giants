@@ -91,6 +91,10 @@ class Target(object):
         for sector in temp_search_result.table['description']:
             available_sectors.append(int(re.search(r'\d+', sector).group()))
 
+        # restrict to sectors greater than 53 and less than 56
+        # HACK for PHT
+        available_sectors = [s for s in available_sectors if s > 53 and s < 56]
+
         return available_sectors
     
     def from_lightkurve(self, sectors=None, flatten=True, **kwargs):
