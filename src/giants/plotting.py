@@ -98,7 +98,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     dims=(18, 24)
 
     # fit BLS
-    bls_results = get_bls_results(target.lc)
+    bls_results = get_bls_results(target.lc, target.ticid)
     period = bls_results.period[np.argmax(bls_results.power)]
     t0 = bls_results.transit_time[np.argmax(bls_results.power)]
     depth = bls_results.depth[np.argmax(bls_results.power)]
@@ -343,7 +343,7 @@ def plot_fft(lc, ax=None):
 
     return freq, fts
 
-def get_bls_results(lc):
+def get_bls_results(lc, targetid='None'):
     """
     Get the BLS results for a given light curve.
     
@@ -368,7 +368,7 @@ def get_bls_results(lc):
     stats['duration'] = results.duration[np.argmax(results.power)]
 
     # HACK PHT stats
-    with open(f'/home/nsaunders/data/outputs/PHT_update/bls_stats/{lc.targetid}_bls.pkl', 'wb') as f:
+    with open(f'/home/nsaunders/data/outputs/PHT_update/bls_stats/{targetid}_bls.pkl', 'wb') as f:
         pickle.dump(stats, f)
 
     return results
