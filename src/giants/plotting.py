@@ -7,6 +7,7 @@ from astropy.stats import BoxLeastSquares
 from astropy.coordinates import SkyCoord, Angle
 import lightkurve as lk
 import astropy.units as u
+import pickle
 from astroquery.mast import Catalogs
 
 try:
@@ -358,6 +359,18 @@ def get_bls_results(lc):
     """
     model = BoxLeastSquares(lc.time, lc.flux)
     results = model.power(np.linspace(1., 25., 1000), 0.16)
+
+    stats = model.compute_stats(results.period[np.argmax(results.power)], 
+                                results.duration[np.argmax(results.power)], 
+                                results.transit_time[np.argmax(results.power)])
+    
+    stats['period'] = results.period[np.argmax(results.power)]
+    stats['duration'] = results.duration[np.argmax(results.power)]
+
+    # HACK PHT stats
+    with open(f'/home/nsaunders/data/outputs/PHT_update/bls_stats/{lc.targetid}_bls.pkl', 'wb') as f:
+        pickle.dump(stats, f)
+
     return results
 
 def plot_bls(lc, ax, results=None):
