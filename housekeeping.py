@@ -1,8 +1,14 @@
 import os
 import time
 
+dirpath = '/home/nsaunders/.lightkurve-cache/tesscut/'
+
 while True:
     time.sleep(60)
-    for f in os.listdir('/home/nsaunders/.lightkurve-cache/tesscut/'):
+    for f in os.listdir(dirpath):
         if os.stat(f).st_mtime < time.time() - 60:
-            os.remove(f)
+            try:
+                os.remove(os.path.join(dirpath, f))
+                print(f'Removed {f}')
+            except:
+                print(f'Could not remove {f}')
