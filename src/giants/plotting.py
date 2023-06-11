@@ -98,7 +98,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     dims=(18, 24)
 
     # fit BLS
-    bls_results = get_bls_results(target.lc, target.ticid)
+    bls_results, bls_stats = get_bls_results(target.lc, target.ticid)
     period = bls_results.period[np.argmax(bls_results.power)]
     t0 = bls_results.transit_time[np.argmax(bls_results.power)]
     depth = bls_results.depth[np.argmax(bls_results.power)]
@@ -169,13 +169,17 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     else:
         ax.axis('off')
 
+    harmonic_del = bls_stats['harmonic_delta_log_likelihood'].value
+    sde = (bls_results.power - np.mean(bls_results.power)) / np.std(bls_results.power)
+    max_power = max(sde)
+
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
     fig.set_size_inches([d-1 for d in dims[::-1]])
 
     # save the transit stats
     with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
-                file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur} {scaled_residuals}\n")
+                file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur} {scaled_residuals} {harmonic_del} {sde} {max_power}\n")
 
     # save the data
     if save_data:
@@ -367,11 +371,7 @@ def get_bls_results(lc, targetid='None'):
     stats['period'] = results.period[np.argmax(results.power)]
     stats['duration'] = results.duration[np.argmax(results.power)]
 
-    # HACK PHT stats
-    with open(f'/home/nsaunders/data/outputs/PHT_update/bls_stats/{targetid}_bls.pkl', 'wb') as f:
-        pickle.dump(stats, f)
-
-    return results
+    return results, stats
 
 def plot_bls(lc, ax, results=None):
     """
@@ -387,7 +387,7 @@ def plot_bls(lc, ax, results=None):
         Astropy BLS object.
     """
     if results is None:
-        results = get_bls_results(lc)
+        results, stats = get_bls_results(lc)
     period = results.period[np.argmax(results.power)]
 
     ax.plot(results.period, results.power, "k", lw=0.5)
