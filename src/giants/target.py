@@ -277,6 +277,11 @@ class Target(object):
         corrected_lc : `lightkurve.LightCurve` object
             background-corrected light curve
         """
+
+        # remove the first 12 hours and last 12 hours of data
+        tpf = tpf[tpf.time.value >= tpf.time.value[0] + 0.5]
+        tpf = tpf[tpf.time.value <= tpf.time.value[-1] - 0.5]
+
         # define threshold aperture mask
         aper = tpf._parse_aperture_mask('threshold')
         raw_lc = tpf.to_lightcurve(aperture_mask=aper)
