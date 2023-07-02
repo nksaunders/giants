@@ -6,8 +6,9 @@ def create_batch_file(inlist, outdir, batchfile_path, local=False):
 
     # read in the list of targets
     f = pd.read_csv(inlist, delimiter=',')
-    targets = np.array(f['tic'])
-    if len(targets) == 0:
+    try:
+        targets = np.array(f['tic'])
+    except:
         targets = np.array(f['TIC'])
 
     # create the batch file
