@@ -1,5 +1,5 @@
 numpy
-astropy==4.3.1
+astropy<=4.3.1
 matplotlib
 lightkurve==2.0.11
 astroquery==0.4.1
