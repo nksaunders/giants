@@ -93,7 +93,7 @@ class Target(object):
 
         # restrict to sectors greater than 53 and less than 56
         # HACK for PHT
-        available_sectors = [s for s in available_sectors if s > 53 and s < 56]
+        # available_sectors = [s for s in available_sectors if s > 53 and s < 56]
 
         return available_sectors
     
