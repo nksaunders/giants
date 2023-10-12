@@ -93,7 +93,7 @@ class Target(object):
 
         # restrict to sectors greater than 53 and less than 56
         # HACK for PHT
-        # available_sectors = [s for s in available_sectors if s > 53 and s < 56]
+        # available_sectors = [s for s in available_sectors if s >= 40 and s < 56]
 
         return available_sectors
     
@@ -118,18 +118,28 @@ class Target(object):
         """
 
         # apply sector mask
-        if sectors is not None:
-            # make sure sectors is a list
-            if isinstance(sectors, int):
-                sectors = [sectors]
+        # if sectors is not None:
+        #     # make sure sectors is a list
+        #     if isinstance(sectors, int):
+        #         sectors = [sectors]
 
-            search_result_mask = []
-            for sector in self.available_sectors:
-                search_result_mask.append(sector in sectors)
+        #     search_result_mask = []
+        #     for sector in self.available_sectors:
+        #         search_result_mask.append(sector in sectors)
 
-            masked_search_result = self.search_result[search_result_mask]
-        else:
-            masked_search_result = self.search_result
+        #     masked_search_result = self.search_result[search_result_mask]
+        # else:
+        #     masked_search_result = self.search_result
+        
+        # HACK for PHT
+        search_result_mask = []
+        for sector in self.available_sectors:
+            if sector >= 40 and sector < 56:
+                search_result_mask.append(True)
+            else:
+                search_result_mask.append(False)
+
+        masked_search_result = self.search_result[search_result_mask]
 
         # download data
         tpfc = lk.TargetPixelFileCollection([])
@@ -152,8 +162,8 @@ class Target(object):
             new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
 
             # flatten lc
-            if flatten:
-                lc = lc.flatten()
+            # if flatten: # HACK for PHT
+            lc = lc.flatten(9001)
 
             # stitch together
             lc = lc.append(new_lc)
@@ -278,9 +288,21 @@ class Target(object):
             background-corrected light curve
         """
 
-        # remove the first 12 hours and last 12 hours of data
-        tpf = tpf[tpf.time.value >= tpf.time.value[0] + 0.5]
-        tpf = tpf[tpf.time.value <= tpf.time.value[-1] - 0.5]
+        # create boolean mask for tpf
+        link_mask = np.ones_like(tpf.time.value, dtype=bool)
+
+        # add the first 24 and last 12 hours of data to mask
+        link_mask[tpf.time.value < tpf.time.value[0] + 1.0] = False
+        link_mask[tpf.time.value > tpf.time.value[-1] - 0.5] = False
+
+        # identify the largest gap in the data
+        gap = np.argmax(np.diff(tpf.time.value))
+
+        # mask 24 hours after and 12 hours before the largest gap
+        link_mask[(tpf.time.value < tpf.time.value[gap] + 1.0) & (tpf.time.value > tpf.time.value[gap] - 0.5)] = False
+
+        # drop False indicies from tpf
+        tpf = tpf[link_mask]
 
         # define threshold aperture mask
         aper = tpf._parse_aperture_mask('threshold')
