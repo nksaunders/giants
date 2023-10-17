@@ -91,10 +91,6 @@ class Target(object):
         for sector in temp_search_result.table['description']:
             available_sectors.append(int(re.search(r'\d+', sector).group()))
 
-        # restrict to sectors greater than 53 and less than 56
-        # HACK for PHT
-        # available_sectors = [s for s in available_sectors if s >= 40 and s < 56]
-
         return available_sectors
     
     def from_lightkurve(self, sectors=None, flatten=True, **kwargs):
@@ -118,28 +114,28 @@ class Target(object):
         """
 
         # apply sector mask
-        # if sectors is not None:
-        #     # make sure sectors is a list
-        #     if isinstance(sectors, int):
-        #         sectors = [sectors]
+        if sectors is not None:
+            # make sure sectors is a list
+            if isinstance(sectors, int):
+                sectors = [sectors]
 
-        #     search_result_mask = []
-        #     for sector in self.available_sectors:
-        #         search_result_mask.append(sector in sectors)
+            search_result_mask = []
+            for sector in self.available_sectors:
+                search_result_mask.append(sector in sectors)
 
-        #     masked_search_result = self.search_result[search_result_mask]
-        # else:
-        #     masked_search_result = self.search_result
+            masked_search_result = self.search_result[search_result_mask]
+        else:
+            masked_search_result = self.search_result
         
         # HACK for PHT
-        search_result_mask = []
-        for sector in self.available_sectors:
-            if sector >= 40 and sector < 56:
-                search_result_mask.append(True)
-            else:
-                search_result_mask.append(False)
+        # search_result_mask = []
+        # for sector in self.available_sectors:
+        #     if sector >= 40 and sector < 56:
+        #         search_result_mask.append(True)
+        #     else:
+        #         search_result_mask.append(False)
 
-        masked_search_result = self.search_result[search_result_mask]
+        # masked_search_result = self.search_result[search_result_mask]
 
         # download data
         tpfc = lk.TargetPixelFileCollection([])
