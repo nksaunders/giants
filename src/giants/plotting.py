@@ -114,7 +114,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     t0 = bls_results.transit_time[np.argmax(bls_results.power)]
     depth = bls_results.depth[np.argmax(bls_results.power)]
     depth_snr = depth / np.std(target.lc.flux.value)
-    dur = bls_stats['duration'].value
+    dur = bls_stats['duration'].value * 24.
 
     try:
         # generate ktransit fit
@@ -398,7 +398,7 @@ def get_bls_results(lc, targetid='None'):
     lc = lc[link_mask]
 
     model = BoxLeastSquares(lc.time, lc.flux)
-    results = model.power(np.linspace(1., 25., 1000), 0.16)
+    results = model.power(np.linspace(1., 25., 1000), np.linspace(.05, .25, 1000))
 
     stats = model.compute_stats(results.period[np.argmax(results.power)], 
                                 results.duration[np.argmax(results.power)], 
