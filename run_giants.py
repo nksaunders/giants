@@ -1,3 +1,4 @@
+import os
 import sys
 import argparse
 import pandas as pd
@@ -32,12 +33,17 @@ if __name__ == '__main__':
         else:
             csv_path = None
 
-        target = Target(ticid=args.ticid)
+        if os.path.isfile(f'/home/nsaunders/data/outputs/PHT_dec23/timeseries/{args.ticid}.dat.ts'): # PHT HACK
+            print(f'TIC {args.ticid} already exists.')
 
-        if args.local:
-            target.fetch_and_clean_data(lc_source='local')
         else:
-            target.fetch_and_clean_data(lc_source='lightkurve')
-        plot_summary(target, outdir=args.outdir, save_data=True)
+            target = Target(ticid=args.ticid)
+
+            if args.local:
+                target.fetch_and_clean_data(lc_source='local')
+            else:
+                target.fetch_and_clean_data(lc_source='lightkurve')
+            plot_summary(target, outdir=args.outdir, save_data=True)
+
     except:
         print(f'Target {sys.argv[1]} failed.')
