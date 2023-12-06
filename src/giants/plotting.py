@@ -106,7 +106,13 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
             np.savetxt(outdir+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time.value, target.lc.flux.value]), fmt='%.8f', delimiter=' ')
             np.savetxt(outdir+str(target.ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
 
-    dims=(18, 24)
+    # fit BLS
+    bls_results, bls_stats = get_bls_results(target.lc, target.ticid)
+    period = bls_results.period[np.argmax(bls_results.power)]
+    t0 = bls_results.transit_time[np.argmax(bls_results.power)]
+    depth = bls_results.depth[np.argmax(bls_results.power)]
+    depth_snr = depth / np.std(target.lc.flux.value)
+    dur = bls_stats['duration'].value * 24.
 
     # fit BLS
     bls_results, bls_stats = get_bls_results(target.lc, target.ticid)
@@ -123,14 +129,21 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
         kt_period = result[0]
         kt_t0 = result[2]
 
-        scaled_residuals = np.median(fit_transit_model(target, period, t0)[1].residuals()) / np.std(target.lc.flux.value)
+        scaled_residuals = np.median(ktransit_model.residuals()) / np.std(target.lc.flux.value)
 
     except:
         model_lc = None
         kt_period = period
         kt_t0 = t0
 
+        scaled_residuals = np.nan
+
+    # save the transit stats
+    with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
+                file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur} {scaled_residuals} {harmonic_del} {max_power}\n")
+
     """Create the figure."""
+    dims=(18, 24)
     fig = plt.gcf()
     fig.suptitle(f'TIC {target.ticid}', fontweight='bold', size=24, y=0.93)
 
@@ -193,10 +206,6 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
     fig.set_size_inches([d-1 for d in dims[::-1]])
-
-    # save the transit stats
-    with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
-                file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur} {scaled_residuals} {harmonic_del} {max_power}\n")
 
     if save_fig:
         try:
@@ -398,7 +407,7 @@ def get_bls_results(lc, targetid='None'):
     lc = lc[link_mask]
 
     model = BoxLeastSquares(lc.time, lc.flux)
-    results = model.power(np.linspace(1., 25., 1000), np.linspace(.05, .25, 1000))
+    results = model.power(np.linspace(1., 25., 1000), np.linspace(.1, .5, 1000))
 
     stats = model.compute_stats(results.period[np.argmax(results.power)], 
                                 results.duration[np.argmax(results.power)], 
