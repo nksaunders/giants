@@ -95,6 +95,8 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     matplotlib.rc('font', **font)
     plt.style.use('seaborn-muted')
 
+    freq, fts = calculate_fft(target.lc)
+
     # save the data
     if save_data:
         try:
@@ -173,7 +175,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
 
     # plot the FFT
     ax = plt.subplot2grid(dims, (15,17), colspan=7, rowspan=3)
-    freq, fts = plot_fft(target.lc, ax)
+    plot_fft(freq, fts, ax)
     plt.subplots_adjust(hspace=0)
 
     # include the transit stats table
@@ -320,7 +322,19 @@ def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
     ax.set_xlim(-.1*per, .1*per)
     ax.set_ylabel('Residuals (ppm)')
 
-def plot_fft(lc, ax=None):
+def calculate_fft(lc):
+    nyq=283.
+    ls = lc.to_periodogram('ls')
+    freq = ls.frequency.to(u.uHz).value
+    fts = ls.power.value
+
+    use = np.where(freq < nyq + 150)
+    freq = freq[use]
+    fts = fts[use]
+
+    return freq, fts
+
+def plot_fft(freq, fts, ax=None):
     """
     Plot the FFT of a given light curve.
     
@@ -340,15 +354,6 @@ def plot_fft(lc, ax=None):
     """
     if ax is None:
         _, ax = plt.subplots(1)
-
-    nyq=283.
-    ls = lc.to_periodogram('ls')
-    freq = ls.frequency.to(u.uHz).value
-    fts = ls.power.value
-
-    use = np.where(freq < nyq + 150)
-    freq = freq[use]
-    fts = fts[use]
 
     ax.loglog(freq, fts/np.max(fts), c='dodgerblue')
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='gold', lw=2.5)
