@@ -122,6 +122,10 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     depth_snr = depth / np.std(target.lc.flux.value)
     dur = bls_stats['duration'].value * 24.
 
+    harmonic_del = bls_stats['harmonic_delta_log_likelihood'].value
+    sde = (bls_results.power - np.mean(bls_results.power)) / np.std(bls_results.power)
+    max_power = max(sde)
+
     try:
         # generate ktransit fit
         model_lc, ktransit_model = fit_transit_model(target, period, t0)
@@ -198,10 +202,6 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
                    dur, scaled_residuals, ax)
     else:
         ax.axis('off')
-
-    harmonic_del = bls_stats['harmonic_delta_log_likelihood'].value
-    sde = (bls_results.power - np.mean(bls_results.power)) / np.std(bls_results.power)
-    max_power = max(sde)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
