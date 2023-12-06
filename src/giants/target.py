@@ -41,7 +41,6 @@ class Target(object):
         self.has_target_info = False
         self.silent = silent
 
-        self.search_result = lk.search_tesscut(f'TIC {ticid}')
         self.get_target_info(self.ticid)
         self.available_sectors = self.check_available_sectors()
 
@@ -83,12 +82,12 @@ class Target(object):
             list of available sectors
         """
         if ticid is not None:
-            temp_search_result = lk.search_tesscut(f'TIC {ticid}')
+            self.search_result = lk.search_tesscut(f'TIC {ticid}')
         else:
-            temp_search_result = self.search_result
+            self.search_result = lk.search_tesscut(f'TIC {self.ticid}')
         
         available_sectors = []
-        for sector in temp_search_result.table['description']:
+        for sector in self.search_result.table['description']:
             available_sectors.append(int(re.search(r'\d+', sector).group()))
 
         return available_sectors
@@ -128,14 +127,14 @@ class Target(object):
             masked_search_result = self.search_result
         
         # HACK for PHT
-        # search_result_mask = []
-        # for sector in self.available_sectors:
-        #     if sector >= 40 and sector < 56:
-        #         search_result_mask.append(True)
-        #     else:
-        #         search_result_mask.append(False)
+        search_result_mask = []
+        for sector in self.available_sectors:
+            if sector >= 27 and sector < 56:
+                search_result_mask.append(True)
+            else:
+                search_result_mask.append(False)
 
-        # masked_search_result = self.search_result[search_result_mask]
+        masked_search_result = self.search_result[search_result_mask]
 
         # download data
         tpfc = lk.TargetPixelFileCollection([])
@@ -145,21 +144,23 @@ class Target(object):
             except:
                 continue
 
+        self.tpfc = tpfc
+
         # apply the pca background correction
         self.tpf = tpfc[0]
-        lc = self.apply_pca_corrector(self.tpf)
+        lc = self.apply_pca_corrector(self.tpf, zero_point_background=True)
         raw_lc = self.tpf.to_lightcurve(aperture_mask='threshold')
 
         self.lcc = lk.LightCurveCollection([lc])
         self.breakpoints = [lc.time[-1].value]
 
         for tpf in tpfc[1:]:
-            new_lc = self.apply_pca_corrector(tpf)
+            new_lc = self.apply_pca_corrector(tpf, zero_point_background=True)
             new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
 
             # flatten lc
             # if flatten: # HACK for PHT
-            lc = lc.flatten(9001)
+            # new_lc = new_lc.flatten(9001)
 
             # stitch together
             lc = lc.append(new_lc)
@@ -284,21 +285,21 @@ class Target(object):
             background-corrected light curve
         """
 
-        # create boolean mask for tpf
-        link_mask = np.ones_like(tpf.time.value, dtype=bool)
+        # # create boolean mask for tpf
+        # link_mask = np.ones_like(tpf.time.value, dtype=bool)
 
-        # add the first 24 and last 12 hours of data to mask
-        link_mask[tpf.time.value < tpf.time.value[0] + 1.0] = False
-        link_mask[tpf.time.value > tpf.time.value[-1] - 0.5] = False
+        # # add the first 24 and last 12 hours of data to mask
+        # link_mask[tpf.time.value < tpf.time.value[0] + 1.0] = False
+        # link_mask[tpf.time.value > tpf.time.value[-1] - 0.5] = False
 
-        # identify the largest gap in the data
-        gap = np.argmax(np.diff(tpf.time.value))
+        # # identify the largest gap in the data
+        # gap = np.argmax(np.diff(tpf.time.value))
 
-        # mask 24 hours after and 12 hours before the largest gap
-        link_mask[(tpf.time.value < tpf.time.value[gap] + 1.0) & (tpf.time.value > tpf.time.value[gap] - 0.5)] = False
+        # # mask 24 hours after and 12 hours before the largest gap
+        # link_mask[(tpf.time.value < tpf.time.value[gap] + 1.0) & (tpf.time.value > tpf.time.value[gap] - 0.5)] = False
 
-        # drop False indicies from tpf
-        tpf = tpf[link_mask]
+        # # drop False indicies from tpf
+        # tpf = tpf[link_mask]
 
         # define threshold aperture mask
         aper = tpf._parse_aperture_mask('threshold')
@@ -306,7 +307,7 @@ class Target(object):
 
         # remove NaNs and negative flux values
         mask = (raw_lc.flux_err > 0) | (~np.isnan(raw_lc.flux))
-        self.raw_lc = raw_lc[mask]
+        raw_lc = raw_lc[mask]
         tpf = tpf[mask]
 
         # create design matrix from pixels outside of aperture
@@ -318,7 +319,7 @@ class Target(object):
         dm = dm.append_constant()
 
         # fit weights to design matrix and remove background noise model
-        corrector = lk.RegressionCorrector(self.raw_lc.normalize())
+        corrector = lk.RegressionCorrector(raw_lc.normalize())
         corrected_lc_unnormalized = corrector.correct(dm)
         model = corrector.model_lc
 
@@ -326,9 +327,9 @@ class Target(object):
         if zero_point_background:
             model -= np.percentile(model.flux, 5)
 
-        corrected_lc = lk.LightCurve(time=model.time, flux=self.raw_lc.normalize().flux.value-model.flux, flux_err=self.raw_lc.flux_err.value)
+        corrected_lc = lk.LightCurve(time=model.time, flux=raw_lc.normalize().flux.value-model.flux.value, flux_err=raw_lc.flux_err.value)
 
-        return corrected_lc
+        return corrected_lc.flatten(9001)
     
     def fetch_and_clean_data(self, lc_source='lightkurve', flatten=True, sectors=None, gauss_filter_lc=True, **kwargs):
         """

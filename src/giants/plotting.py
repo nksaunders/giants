@@ -95,6 +95,15 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     matplotlib.rc('font', **font)
     plt.style.use('seaborn-muted')
 
+    # save the data
+    if save_data:
+        try:
+            np.savetxt(outdir+'/timeseries/'+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time.value, target.lc.flux.value]), fmt='%.8f', delimiter=' ')
+            np.savetxt(outdir+'/fft/'+str(target.ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
+        except:
+            np.savetxt(outdir+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time.value, target.lc.flux.value]), fmt='%.8f', delimiter=' ')
+            np.savetxt(outdir+str(target.ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
+
     dims=(18, 24)
 
     # fit BLS
@@ -103,15 +112,21 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     t0 = bls_results.transit_time[np.argmax(bls_results.power)]
     depth = bls_results.depth[np.argmax(bls_results.power)]
     depth_snr = depth / np.std(target.lc.flux.value)
+    dur = bls_stats['duration'].value
 
-    # generate ktransit fit
-    model_lc, ktransit_model = fit_transit_model(target, period, t0)
-    result = ktransit_model.fitresult[1:]
-    kt_period = result[0]
-    kt_t0 = result[2]
-    dur = _individual_ktransit_dur(model_lc.time, model_lc.flux)
+    try:
+        # generate ktransit fit
+        model_lc, ktransit_model = fit_transit_model(target, period, t0)
+        result = ktransit_model.fitresult[1:]
+        kt_period = result[0]
+        kt_t0 = result[2]
 
-    scaled_residuals = np.median(fit_transit_model(target, period, t0)[1].residuals()) / np.std(target.lc.flux.value)
+        scaled_residuals = np.median(fit_transit_model(target, period, t0)[1].residuals()) / np.std(target.lc.flux.value)
+
+    except:
+        model_lc = None
+        kt_period = period
+        kt_t0 = t0
 
     """Create the figure."""
     fig = plt.gcf()
@@ -144,7 +159,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
 
     # plot the transit model
     ax = plt.subplot2grid(dims, (12,0), colspan=8, rowspan=4)
-    plot_tr_top(target.lc, model_lc, kt_period, kt_t0, ax)
+    plot_tr_top(target.lc, model_lc, kt_period, kt_t0, depth, ax)
 
     # plot the residuals
     ax = plt.subplot2grid(dims, (16,0), colspan=8, rowspan=2)
@@ -180,15 +195,6 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
     # save the transit stats
     with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
                 file.write(f"{target.ticid} {depth} {depth_snr} {period} {t0} {dur} {scaled_residuals} {harmonic_del} {max_power}\n")
-
-    # save the data
-    if save_data:
-        try:
-            np.savetxt(outdir+'/timeseries/'+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time.value, target.lc.flux.value]), fmt='%.8f', delimiter=' ')
-            np.savetxt(outdir+'/fft/'+str(target.ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
-        except:
-            np.savetxt(outdir+str(target.ticid)+'.dat.ts', np.transpose([target.lc.time.value, target.lc.flux.value]), fmt='%.8f', delimiter=' ')
-            np.savetxt(outdir+str(target.ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
 
     if save_fig:
         try:
@@ -249,7 +255,7 @@ def plot_raw_lc(target, model_lc, ax=None):
     depth = 0 - np.min(model_lc.flux.value)
     ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
 
-def plot_tr_top(flux_lc, model_lc, per, t0, ax):
+def plot_tr_top(flux_lc, model_lc, per, t0, depth, ax):
     """
     Plot the transit model on top of the raw light curve.    
 
@@ -266,19 +272,21 @@ def plot_tr_top(flux_lc, model_lc, per, t0, ax):
     ax : matplotlib.pyplot.axis
         Axis to plot on.
     """
-    res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
-    res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
-
-    depth = 0 - np.min(model_lc.flux.value)
-
-    ax.set_xticklabels([])
-    ax.set_xlim(-.1*per, .1*per)
 
     flux_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
     flux_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='dodgerblue', s=420)
-    model_lc.fold(per, t0).plot(ax=ax, c='r', lw=3, zorder=10000)
+    
+    if model_lc is not None:
 
-    ax.set_ylim(np.min(model_lc.flux.value)-depth*2, depth*2)
+        res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
+        res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
+
+        depth = 0 - np.min(model_lc.flux.value)
+        model_lc.fold(per, t0).plot(ax=ax, c='r', lw=3, zorder=10000)
+
+    ax.set_xticklabels([])
+    ax.set_xlim(-.1*per, .1*per)
+    ax.set_ylim(-depth*2, depth*2)
     ax.set_ylabel('Normalized Flux')
 
 def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
@@ -298,10 +306,16 @@ def plot_tr_bottom(flux_lc, model_lc, per, t0, ax):
     ax : matplotlib.pyplot.axis
         Axis to plot on.
     """
-    res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
-    res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
-    res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
-    res_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='dodgerblue', s=420)
+    if model_lc is not None:
+  
+        res_flux_ppm = (flux_lc.flux - model_lc.flux.reshape(len(flux_lc.flux))) * 1e6
+        res_lc = lk.LightCurve(time=model_lc.time, flux=res_flux_ppm)
+        res_lc.fold(per, t0).remove_outliers().scatter(ax=ax, c='gray', s=50)
+        res_lc.fold(per, t0).remove_outliers().bin(.1).scatter(ax=ax, c='dodgerblue', s=420)
+
+    else:
+        ax.annotate('No transit model', xy=(0.5, 0.5), xycoords='axes fraction', fontsize=20, ha='center', va='center')
+
     ax.axhline(0, c='k', linestyle='dashed')
     ax.set_xlim(-.1*per, .1*per)
     ax.set_ylabel('Residuals (ppm)')
@@ -423,7 +437,7 @@ def plot_folded(lc, period, t0, depth, ax):
 
     lc.fold(period, t0).scatter(ax=ax, c='gray', s=25,
                                 label=rf'$P={period:.2f}$ d')
-    lc.fold(period, t0).bin(.1).plot(ax=ax, c='r', lw=2)
+    lc.fold(period, t0).bin(.025).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(-.5*period, .5*period)
     ax.set_ylim(-3*depth, 2*depth)
     plt.grid(True)
@@ -449,7 +463,7 @@ def plot_odd(lc, period, t0, depth, ax):
         _, ax = plt.subplots(1)
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='gray', label='Odd Transit', s=25)
-    lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
+    lc.fold(2*period, t0+period/2).bin(.025).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(0, period)
     ax.set_ylim(-3*depth, 2*depth)
 
@@ -476,7 +490,7 @@ def plot_even(lc, period, t0, depth, ax):
         _, ax = plt.subplots(1)
 
     lc.fold(2*period, t0+period/2).scatter(ax=ax, c='gray', label='Even Transit', s=25)
-    lc.fold(2*period, t0+period/2).bin(.1).plot(ax=ax, c='r', lw=2)
+    lc.fold(2*period, t0+period/2).bin(.025).plot(ax=ax, c='r', lw=2)
     ax.set_xlim(-period, 0)
     ax.set_ylim(-3*depth, 2*depth)
 
@@ -522,7 +536,7 @@ def plot_table(target, ktransit_model, depth_snr, dur, resid, ax):
     values = [f'{val:.3f}' for val in result]
 
     values.append(f'{float(values[-1]) * target.rstar * 9.731:.3f}')
-    values.append(f'{dur.value:.3f}')
+    values.append(f'{dur:.3f}')
     values.append(f'{depth_snr:.3f}')
     values.append(f'{resid:.3f}')
 
