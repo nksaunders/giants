@@ -380,6 +380,23 @@ def get_bls_results(lc, targetid='None'):
     results : astropy.stats.BoxLeastSquares
         Astropy BLS object.        
     """
+    
+    # create boolean mask for tpf
+    link_mask = np.ones_like(lc.time.value, dtype=bool)
+
+    # add the first 24 and last 12 hours of data to mask
+    link_mask[lc.time.value < lc.time.value[0] + 1.0] = False
+    link_mask[lc.time.value > lc.time.value[-1] - 0.5] = False
+
+    # identify the largest gap in the data
+    gap = np.argmax(np.diff(lc.time.value))
+
+    # mask 24 hours after and 12 hours before the largest gap
+    link_mask[(lc.time.value < lc.time.value[gap] + 1.0) & (lc.time.value > lc.time.value[gap] - 0.5)] = False
+
+    # drop False indicies from tpf
+    lc = lc[link_mask]
+
     model = BoxLeastSquares(lc.time, lc.flux)
     results = model.power(np.linspace(1., 25., 1000), 0.16)
 
