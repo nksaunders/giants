@@ -97,6 +97,9 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True):
 
     freq, fts = calculate_fft(target.lc)
 
+    mask = target.link_mask[~target.mask]
+    target.lc = target.lc[mask] # PHT HACK
+
     # save the data
     if save_data:
         try:

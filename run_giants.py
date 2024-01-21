@@ -42,7 +42,7 @@ if __name__ == '__main__':
             if args.local:
                 target.fetch_and_clean_data(lc_source='local')
             else:
-                target.fetch_and_clean_data(lc_source='lightkurve')
+                target.fetch_and_clean_data(lc_source='lightkurve', gauss_filter_lc=False)
             plot_summary(target, outdir=args.outdir, save_data=True)
 
     except:

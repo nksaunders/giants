@@ -146,6 +146,8 @@ class Target(object):
 
         self.tpfc = tpfc
 
+        self.link_mask = []
+
         # apply the pca background correction
         self.tpf = tpfc[0]
         lc = self.apply_pca_corrector(self.tpf, zero_point_background=True)
@@ -165,9 +167,11 @@ class Target(object):
             # stitch together
             lc = lc.append(new_lc)
             raw_lc = raw_lc.append(new_raw_lc)
+            self.lcc.append(new_lc)
 
         self.lc = lc
         self.raw_lc = raw_lc
+        self.link_mask = np.concatenate(self.link_mask)
 
         return lc
     
@@ -285,22 +289,6 @@ class Target(object):
             background-corrected light curve
         """
 
-        # # create boolean mask for tpf
-        # link_mask = np.ones_like(tpf.time.value, dtype=bool)
-
-        # # add the first 24 and last 12 hours of data to mask
-        # link_mask[tpf.time.value < tpf.time.value[0] + 1.0] = False
-        # link_mask[tpf.time.value > tpf.time.value[-1] - 0.5] = False
-
-        # # identify the largest gap in the data
-        # gap = np.argmax(np.diff(tpf.time.value))
-
-        # # mask 24 hours after and 12 hours before the largest gap
-        # link_mask[(tpf.time.value < tpf.time.value[gap] + 1.0) & (tpf.time.value > tpf.time.value[gap] - 0.5)] = False
-
-        # # drop False indicies from tpf
-        # tpf = tpf[link_mask]
-
         # define threshold aperture mask
         aper = tpf._parse_aperture_mask('threshold')
         raw_lc = tpf.to_lightcurve(aperture_mask=aper)
@@ -309,6 +297,24 @@ class Target(object):
         mask = (raw_lc.flux_err > 0) | (~np.isnan(raw_lc.flux))
         raw_lc = raw_lc[mask]
         tpf = tpf[mask]
+
+        # create boolean mask for tpf
+        link_mask = np.ones_like(tpf.time.value, dtype=bool)
+
+        # add the first 24 and last 12 hours of data to mask
+        link_mask[tpf.time.value < tpf.time.value[0] + 1.0] = False
+        link_mask[tpf.time.value > tpf.time.value[-1] - 0.5] = False
+
+        # identify the largest gap in the data
+        gap = np.argmax(np.diff(tpf.time.value))
+
+        # mask 24 hours after and 12 hours before the largest gap
+        link_mask[(tpf.time.value < tpf.time.value[gap] + 1.0) & (tpf.time.value > tpf.time.value[gap] - 0.5)] = False
+
+        self.link_mask.append(link_mask)
+
+        # # drop False indicies from tpf
+        # tpf = tpf[link_mask]
 
         # create design matrix from pixels outside of aperture
         regressors = tpf.flux[:, ~aper]
@@ -329,9 +335,9 @@ class Target(object):
 
         corrected_lc = lk.LightCurve(time=model.time, flux=raw_lc.normalize().flux.value-model.flux.value, flux_err=raw_lc.flux_err.value)
 
-        return corrected_lc.flatten(9001)
+        return corrected_lc.flatten(12001)
     
-    def fetch_and_clean_data(self, lc_source='lightkurve', flatten=True, sectors=None, gauss_filter_lc=True, **kwargs):
+    def fetch_and_clean_data(self, lc_source='lightkurve', flatten=True, sectors=None, gauss_filter_lc=False, **kwargs):
         """
         Query and download data, remove background signal and outliers. The light curve is stored as a
         object variable `Target.lc`.
@@ -387,7 +393,7 @@ class Target(object):
         lc = lc[~mask]
         lc.flux = lc.flux - 1 * lc.flux.unit
         if gauss_filter_lc:
-            lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 100) *lc.flux.unit # <2-day (5muHz) filter
+            lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 100) * lc.flux.unit # <2-day (5muHz) filter
 
         # store cleaned lc
         self.lc = lc
