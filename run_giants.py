@@ -33,7 +33,7 @@ if __name__ == '__main__':
         else:
             csv_path = None
 
-        if os.path.isfile(f'/home/nsaunders/data/outputs/PHT_dec23/timeseries/{args.ticid}.dat.ts'): # PHT HACK
+        if os.path.isfile(os.path.join(args.outdir, '/timeseries/{args.ticid}.dat.ts')): # PHT HACK
             print(f'TIC {args.ticid} already exists.')
 
         else:
