@@ -127,12 +127,12 @@ class Target(object):
             masked_search_result = self.search_result
         
         # HACK for PHT
-        search_result_mask = []
-        for sector in self.available_sectors:
-            if sector >= 27 and sector < 56:
-                search_result_mask.append(True)
-            else:
-                search_result_mask.append(False)
+        search_result_mask = np.ones(len(self.available_sectors), dtype=bool)
+        # for sector in self.available_sectors:
+        #     if sector >= 27 and sector < 56:
+        #         search_result_mask.append(True)
+        #     else:
+        #         search_result_mask.append(False)
 
         masked_search_result = self.search_result[search_result_mask]
 
