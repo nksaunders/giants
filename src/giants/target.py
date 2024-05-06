@@ -92,7 +92,7 @@ class Target(object):
 
         return available_sectors
     
-    def from_lightkurve(self, sectors=None, flatten=True, **kwargs):
+    def from_lightkurve(self, sectors=None, flatten=True, n_pca=5, **kwargs):
         """
         Use `lightkurve.search_tesscut` to query and download TESSCut 11x11 cutout for target.
         This function creates a background model and subtracts it off using `lightkurve.RegressionCorrector`.
@@ -145,24 +145,21 @@ class Target(object):
                 continue
 
         self.tpfc = tpfc
+        self.model_lcc = lk.LightCurveCollection([])
 
         self.link_mask = []
 
         # apply the pca background correction
         self.tpf = tpfc[0]
-        lc = self.apply_pca_corrector(self.tpf, zero_point_background=True)
+        lc = self.apply_pca_corrector(self.tpf, flatten=flatten, zero_point_background=True, n_pca=n_pca)
         raw_lc = self.tpf.to_lightcurve(aperture_mask='threshold')
 
         self.lcc = lk.LightCurveCollection([lc])
         self.breakpoints = [lc.time[-1].value]
 
         for tpf in tpfc[1:]:
-            new_lc = self.apply_pca_corrector(tpf, zero_point_background=True)
+            new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, n_pca=n_pca)
             new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
-
-            # flatten lc
-            # if flatten: # HACK for PHT
-            # new_lc = new_lc.flatten(9001)
 
             # stitch together
             lc = lc.append(new_lc)
@@ -175,7 +172,7 @@ class Target(object):
 
         return lc
     
-    def from_local_data(self, local_data_path, sectors=None, flatten=False):
+    def from_local_data(self, local_data_path, sectors=None, flatten=False, zero_point_background=False, n_pca=5):
         """
         Retrieve data from local data cube.
         Data cubes should be stored in the format 's0001-1-1.fits'
@@ -220,19 +217,14 @@ class Target(object):
         tpfc = lk.TargetPixelFileCollection(tpfs)
 
         self.tpf = tpfc[0]
-        if flatten:
-            lc = self.apply_pca_corrector(self.tpf).flatten(1001)
-        else:
-            lc = self.apply_pca_corrector(self.tpf)
+        lc = self.apply_pca_corrector(self.tpf, flatten=flatten, zero_point_background=zero_point_background, n_pca=n_pca)
+
 
         # store as LCC for plotting later
         self.lcc = lk.LightCurveCollection([lc])
         self.breakpoints = [lc.time[-1]]
         for tpf in tpfc[1:]:
-            if flatten:
-                new_lc = self.apply_pca_corrector(tpf).flatten(1001)
-            else:
-                new_lc = self.apply_pca_corrector(tpf)
+            new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=zero_point_background, n_pca=n_pca)
             self.breakpoints.append(new_lc.time[-1])
             self.lcc.append(new_lc)
             lc = lc.append(new_lc)
@@ -264,7 +256,7 @@ class Target(object):
 
         return outSec, outCam, outCcd
     
-    def apply_pca_corrector(self, tpf, zero_point_background=False):
+    def apply_pca_corrector(self, tpf, flatten=True, zero_point_background=False, n_pca=5):
         """
         De-trending algorithm for `lightkurve` version of FFI pipeline.
 
@@ -302,8 +294,11 @@ class Target(object):
         link_mask = np.ones_like(tpf.time.value, dtype=bool)
 
         # add the first 24 and last 12 hours of data to mask
-        link_mask[tpf.time.value < tpf.time.value[0] + 1.0] = False
-        link_mask[tpf.time.value > tpf.time.value[-1] - 0.5] = False
+        try:
+            link_mask[tpf.time.value < tpf.time.value[0] + 1.0] = False
+            link_mask[tpf.time.value > tpf.time.value[-1] - 0.5] = False
+        except:
+            link_mask = link_mask
 
         # identify the largest gap in the data
         gap = np.argmax(np.diff(tpf.time.value))
@@ -329,15 +324,28 @@ class Target(object):
         corrected_lc_unnormalized = corrector.correct(dm)
         model = corrector.model_lc
 
+        self.model_lcc.append(model)
+
         # optionally normalize to the 5th percentile of model flux
         if zero_point_background:
             model -= np.percentile(model.flux, 5)
 
         corrected_lc = lk.LightCurve(time=model.time, flux=raw_lc.normalize().flux.value-model.flux.value, flux_err=raw_lc.flux_err.value)
 
-        return corrected_lc.flatten(12001)
+        if flatten:
+            if tpf.sector <= 27:
+                flatten_window = 501
+            elif tpf.sector <= 56:
+                flatten_window = 1501
+            else:
+                flatten_window = 4501
+            corrected_lc = corrected_lc.flatten(flatten_window)
+
+        corrected_lc.flux = corrected_lc.flux - 1.
+
+        return corrected_lc
     
-    def fetch_and_clean_data(self, lc_source='lightkurve', flatten=True, sectors=None, gauss_filter_lc=False, **kwargs):
+    def fetch_and_clean_data(self, lc_source='lightkurve',  sectors=None, flatten=True, zero_point_background=True, n_pca=5, **kwargs):
         """
         Query and download data, remove background signal and outliers. The light curve is stored as a
         object variable `Target.lc`.
@@ -362,16 +370,16 @@ class Target(object):
         """
        
         if lc_source == 'lightkurve':
-            lc = self.from_lightkurve(sectors=sectors, flatten=flatten)
+            lc = self.from_lightkurve(sectors=sectors, flatten=flatten, zero_point_background=zero_point_background, n_pca=n_pca)
 
         elif lc_source == 'local':
             lc = self.from_local_data('/data/users/nsaunders/cubes')
 
-        lc = self._clean_data(lc, gauss_filter_lc=gauss_filter_lc)
+        lc = self._clean_data(lc)
 
         return self
     
-    def _clean_data(self, lc, gauss_filter_lc=True):
+    def _clean_data(self, lc):
         """Hidden function to remove common sources of noise and outliers."""
         # mask first 12h after momentum dump
         momdump = (lc.time.value > 1339) * (lc.time.value < 1341)
@@ -391,9 +399,6 @@ class Target(object):
         _, outliers = lc.remove_outliers(sigma=6, return_mask=True)
         mask = momdump | outliers | burnin
         lc = lc[~mask]
-        lc.flux = lc.flux - 1 * lc.flux.unit
-        if gauss_filter_lc:
-            lc.flux = lc.flux - scipy.ndimage.filters.gaussian_filter(lc.flux, 100) * lc.flux.unit # <2-day (5muHz) filter
 
         # store cleaned lc
         self.lc = lc
@@ -425,7 +430,7 @@ class Target(object):
             outdir = os.path.join(self.PACKAGEDIR, 'outputs')
 
         for s in self.available_sectors:
-            self.fetch_and_clean_data(lc_source='lightkurve', sectors=s, gauss_filter_lc=False)
+            self.fetch_and_clean_data(lc_source='lightkurve', sectors=s)
 
             fname_corr = f'{self.ticid}_s{s:02d}_corr.fits'
             fname_raw = f'{self.ticid}_s{s:02d}_raw.fits'

@@ -3,6 +3,10 @@ from astropy.stats import BoxLeastSquares
 import lightkurve as lk
 import astropy.units as u
 from scipy.constants import G
+import pandas as pd
+from astropy.time import Time
+import os
+from . import PACKAGEDIR
 
 def _calculate_separation(m_star, period):
     """ 
@@ -43,7 +47,7 @@ def get_cutout(ticid, cutout_size=9):
 
     return tpf
 
-def build_ktransit_model(ticid, lc, period, t0, rprs=0.02, vary_transit=True):
+def build_ktransit_model(lc, period, t0, rprs=0.02, vary_transit=True):
     """
     Create a ktransit model for a given target and fit it to the light curve.
 
@@ -112,3 +116,22 @@ def _individual_ktransit_dur(time, data):
     dur = (time[first_transit[-1]] - time[first_transit[0]]) * 24.0
 
     return dur
+
+def parse_sectors(lc):
+
+    times_df = pd.read_csv(os.path.join(PACKAGEDIR, 'data/TESS_orbit_times.csv'))
+
+    sector_list = np.unique(np.array(times_df['Sector'].iloc[:-1], dtype=int))
+    start_times = np.array([Time(times_df[times_df['Sector'] == str(s)]['Start of Orbit'].iloc[0]).jd - 2457000 for s in sector_list])
+    end_times = np.array([Time(times_df[times_df['Sector'] == str(s)]['End of Orbit'].iloc[-1]).jd - 2457000 for s in sector_list])
+
+    lcc = lk.LightCurveCollection([])
+    sectors = []
+
+    for i in range(len(start_times)):
+        sector_mask = np.where((lc.time.value >= start_times[i]) & (lc.time.value <= end_times[i]))[0]
+        if len(sector_mask) > 0:
+            sectors.append(i+1)
+            lcc.append(lc[sector_mask])
+
+    return lcc, sectors
