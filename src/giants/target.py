@@ -124,10 +124,11 @@ class Target(object):
 
             masked_search_result = self.search_result[search_result_mask]
         else:
+            search_result_mask = np.ones(len(self.available_sectors), dtype=bool)
             masked_search_result = self.search_result
         
         # HACK for PHT
-        search_result_mask = np.ones(len(self.available_sectors), dtype=bool)
+        # search_result_mask = np.ones(len(self.available_sectors), dtype=bool)
         # for sector in self.available_sectors:
         #     if sector >= 27 and sector < 56:
         #         search_result_mask.append(True)
@@ -148,23 +149,42 @@ class Target(object):
         self.model_lcc = lk.LightCurveCollection([])
 
         self.link_mask = []
+        self.lcc = lk.LightCurveCollection([])
+        self.breakpoints = []
+        self.used_sectors = []
 
+        lc = None
+        
         # apply the pca background correction
-        self.tpf = tpfc[0]
-        lc = self.apply_pca_corrector(self.tpf, flatten=flatten, zero_point_background=True, n_pca=n_pca)
-        raw_lc = self.tpf.to_lightcurve(aperture_mask='threshold')
+        for tpf in tpfc:
 
-        self.lcc = lk.LightCurveCollection([lc])
-        self.breakpoints = [lc.time[-1].value]
+            # define threshold aperture mask
+            aperture_mask = tpf._parse_aperture_mask('threshold')
+            if np.sum(aperture_mask) == 0:
+                aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
+                aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
+                              round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
+                
+            try:
+                new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
+                                                  aperture_mask=aperture_mask, n_pca=n_pca)
+                new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
 
-        for tpf in tpfc[1:]:
-            new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, n_pca=n_pca)
-            new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
+                # stitch together
+                if lc is None:
+                    self.tpf = tpf
+                    self.aperture_mask = aperture_mask
+                    lc = new_lc
+                    raw_lc = new_raw_lc
+                else:
+                    lc = lc.append(new_lc)
+                    raw_lc = raw_lc.append(new_raw_lc)
 
-            # stitch together
-            lc = lc.append(new_lc)
-            raw_lc = raw_lc.append(new_raw_lc)
-            self.lcc.append(new_lc)
+                self.breakpoints.append(new_lc.time[-1])
+                self.used_sectors.append(tpf.sector)
+                self.lcc.append(new_lc)
+            except:
+                continue
 
         self.lc = lc
         self.raw_lc = raw_lc
@@ -217,14 +237,16 @@ class Target(object):
         tpfc = lk.TargetPixelFileCollection(tpfs)
 
         self.tpf = tpfc[0]
-        lc = self.apply_pca_corrector(self.tpf, flatten=flatten, zero_point_background=zero_point_background, n_pca=n_pca)
+        lc = self.apply_pca_corrector(self.tpf, flatten=flatten, zero_point_background=zero_point_background, 
+                                      aperture_mask=None, n_pca=n_pca)
 
 
         # store as LCC for plotting later
         self.lcc = lk.LightCurveCollection([lc])
         self.breakpoints = [lc.time[-1]]
         for tpf in tpfc[1:]:
-            new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=zero_point_background, n_pca=n_pca)
+            new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=zero_point_background, 
+                                              aperture_mask=None, n_pca=n_pca)
             self.breakpoints.append(new_lc.time[-1])
             self.lcc.append(new_lc)
             lc = lc.append(new_lc)
@@ -256,7 +278,7 @@ class Target(object):
 
         return outSec, outCam, outCcd
     
-    def apply_pca_corrector(self, tpf, flatten=True, zero_point_background=False, n_pca=5):
+    def apply_pca_corrector(self, tpf, flatten=True, zero_point_background=False, aperture_mask=None, n_pca=5):
         """
         De-trending algorithm for `lightkurve` version of FFI pipeline.
 
@@ -281,9 +303,16 @@ class Target(object):
             background-corrected light curve
         """
 
-        # define threshold aperture mask
-        aper = tpf._parse_aperture_mask('threshold')
-        raw_lc = tpf.to_lightcurve(aperture_mask=aper)
+        if aperture_mask is None:
+            # define threshold aperture mask
+            aperture_mask = tpf._parse_aperture_mask('threshold')
+            if np.sum(aperture_mask) == 0:
+                aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
+                aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
+                              round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
+
+        # create raw light curve            
+        raw_lc = tpf.to_lightcurve(aperture_mask=aperture_mask)
 
         # remove NaNs and negative flux values
         mask = (raw_lc.flux_err > 0) | (~np.isnan(raw_lc.flux))
@@ -301,18 +330,19 @@ class Target(object):
             link_mask = link_mask
 
         # identify the largest gap in the data
-        gap = np.argmax(np.diff(tpf.time.value))
+        try:
+            gap = np.argmax(np.diff(tpf.time.value))
 
-        # mask 24 hours after and 12 hours before the largest gap
-        link_mask[(tpf.time.value < tpf.time.value[gap] + 1.0) & (tpf.time.value > tpf.time.value[gap] - 0.5)] = False
-
-        self.link_mask.append(link_mask)
+            # mask 24 hours after and 12 hours before the largest gap
+            link_mask[(tpf.time.value < tpf.time.value[gap] + 1.0) & (tpf.time.value > tpf.time.value[gap] - 0.5)] = False
+        except:
+            link_mask = link_mask
 
         # # drop False indicies from tpf
         # tpf = tpf[link_mask]
 
         # create design matrix from pixels outside of aperture
-        regressors = tpf.flux[:, ~aper]
+        regressors = tpf.flux[:, ~aperture_mask]
         dm = lk.DesignMatrix(regressors, name='regressors')
 
         # perform PCA on design matrix and append column of constants
@@ -340,6 +370,8 @@ class Target(object):
             else:
                 flatten_window = 4501
             corrected_lc = corrected_lc.flatten(flatten_window)
+
+        self.link_mask.append(link_mask)
 
         corrected_lc.flux = corrected_lc.flux - 1.
 

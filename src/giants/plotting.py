@@ -102,13 +102,15 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         lcc, sectors = parse_sectors(lc)
         ticid = custom_id
         tpf = lk.search_tesscut('TIC '+str(ticid))[0].download(cutout_size=11)
+        aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
 
     else:
         lc = target.lc
         lcc = target.lcc
         ticid = target.ticid
         tpf = target.tpf
-        sectors = target.available_sectors
+        aperture_mask = target.aperture_mask
+        sectors = target.used_sectors
 
         mask = target.link_mask[~target.mask]
         try:
@@ -196,7 +198,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # plot the TPF
     ax = plt.subplot2grid(dims, (7,25), colspan=11, rowspan=9)
-    plot_tpf(tpf, ticid, ax)
+    plot_tpf(tpf, ticid, aperture_mask, ax)
 
     # plot the transit model
     ax = plt.subplot2grid(dims, (18,0), colspan=12, rowspan=6)
@@ -428,8 +430,11 @@ def get_bls_results(lc):
         Astropy BLS object.        
     """
 
-    lc = lc.bin(.5/24).remove_nans()
-    
+    try:
+        lc = lc.bin(.5/24).remove_nans()
+    except:
+        lc = lc.remove_nans()
+        
     # create boolean mask for tpf
     link_mask = np.ones_like(lc.time.value, dtype=bool)
 
@@ -447,7 +452,7 @@ def get_bls_results(lc):
     lc = lc[link_mask]
 
     model = BoxLeastSquares(lc.time, lc.flux)
-    results = model.power(np.linspace(1., 25., 5000), np.linspace(.1, .5, 1000))
+    results = model.power(np.linspace(1., 25., 7000), np.linspace(.1, .5, 1000))
 
     stats = model.compute_stats(results.period[np.argmax(results.power)], 
                                 results.duration[np.argmax(results.power)], 
@@ -579,7 +584,7 @@ def plot_even(lc, period, t0, depth, dur, ax):
 
     plt.grid(True)
 
-def plot_tpf(tpf, ticid, ax):
+def plot_tpf(tpf, ticid, aperture_mask, ax):
     """
     Plot the TPF for a given target.
 
@@ -592,7 +597,7 @@ def plot_tpf(tpf, ticid, ax):
     """
     fnumber = 100
     ax = tpf.plot(ax=ax, show_colorbar=True, frame=fnumber, 
-                         aperture_mask='threshold', mask_color='k',
+                         aperture_mask=aperture_mask, mask_color='k',
                          title=f'TIC {ticid}, cadence {fnumber}')
     ax = add_gaia_figure_elements(tpf, ax)
 
