@@ -167,7 +167,7 @@ class Target(object):
                 
             try:
                 new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
-                                                  aperture_mask=aperture_mask, n_pca=n_pca)
+                                                  aperture_mask=aperture_mask, n_pca=n_pca, pipeline_call=True)
                 new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
 
                 # stitch together
@@ -278,7 +278,7 @@ class Target(object):
 
         return outSec, outCam, outCcd
     
-    def apply_pca_corrector(self, tpf, flatten=True, zero_point_background=False, aperture_mask=None, n_pca=5):
+    def apply_pca_corrector(self, tpf, flatten=True, zero_point_background=False, aperture_mask=None, n_pca=5, pipeline_call=False):
         """
         De-trending algorithm for `lightkurve` version of FFI pipeline.
 
@@ -346,7 +346,7 @@ class Target(object):
         dm = lk.DesignMatrix(regressors, name='regressors')
 
         # perform PCA on design matrix and append column of constants
-        dm = dm.pca(10)
+        dm = dm.pca(n_pca)
         dm = dm.append_constant()
 
         # fit weights to design matrix and remove background noise model
@@ -354,7 +354,8 @@ class Target(object):
         corrected_lc_unnormalized = corrector.correct(dm)
         model = corrector.model_lc
 
-        self.model_lcc.append(model)
+        if pipeline_call:
+            self.model_lcc.append(model)
 
         # optionally normalize to the 5th percentile of model flux
         if zero_point_background:
@@ -371,13 +372,14 @@ class Target(object):
                 flatten_window = 4501
             corrected_lc = corrected_lc.flatten(flatten_window)
 
-        self.link_mask.append(link_mask)
+        if pipeline_call:
+            self.link_mask.append(link_mask)
 
         corrected_lc.flux = corrected_lc.flux - 1.
 
         return corrected_lc
     
-    def fetch_and_clean_data(self, lc_source='lightkurve',  sectors=None, flatten=True, zero_point_background=True, n_pca=5, **kwargs):
+    def fetch_and_clean_data(self, lc_source='lightkurve', sectors=None, flatten=True, zero_point_background=True, n_pca=5, **kwargs):
         """
         Query and download data, remove background signal and outliers. The light curve is stored as a
         object variable `Target.lc`.

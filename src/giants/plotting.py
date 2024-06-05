@@ -67,10 +67,10 @@ def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
     # Gently size the points by their Gaia magnitude
     sizes = 50000.0 / 2**(result['Gmag']/2)
 
-    plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='firebrick', alpha=0.5, edgecolors='r', s=sizes)
+    plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='r', alpha=0.5, edgecolors='r', s=sizes)
     plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='None', edgecolors='r', s=sizes)
-    plt.xlim([tpf.column, tpf.column+tpf.shape[1]-1])
-    plt.ylim([tpf.row, tpf.row+tpf.shape[2]-1])
+    plt.xlim([tpf.column+0.5, tpf.column+tpf.shape[1]-0.5])
+    plt.ylim([tpf.row+0.5, tpf.row+tpf.shape[2]-0.5])
     plt.axis('off')
 
     return fig
@@ -584,7 +584,7 @@ def plot_even(lc, period, t0, depth, dur, ax):
 
     plt.grid(True)
 
-def plot_tpf(tpf, ticid, aperture_mask, ax):
+def plot_tpf(tpf, ticid, aperture_mask, ax, show_colorbar=True, show_gaia_overlay=True):
     """
     Plot the TPF for a given target.
 
@@ -595,11 +595,21 @@ def plot_tpf(tpf, ticid, aperture_mask, ax):
     ax : matplotlib.pyplot.axis
         Axis to plot on.
     """
+    if show_gaia_overlay:
+        mask_color='k'
+    else:
+        mask_color='r'
+        
     fnumber = 100
-    ax = tpf.plot(ax=ax, show_colorbar=True, frame=fnumber, 
-                         aperture_mask=aperture_mask, mask_color='k',
+    ax = tpf.plot(ax=ax, show_colorbar=show_colorbar, frame=fnumber, 
+                         aperture_mask=aperture_mask, mask_color=mask_color,
                          title=f'TIC {ticid}, cadence {fnumber}')
-    ax = add_gaia_figure_elements(tpf, ax)
+    if show_gaia_overlay:
+        ax = add_gaia_figure_elements(tpf, ax)
+    else:
+        plt.xlim([tpf.column+0.5, tpf.column+tpf.shape[1]-0.5])
+        plt.ylim([tpf.row+0.5, tpf.row+tpf.shape[2]-0.5])
+        plt.axis('off')
 
 def plot_diff_image(tpf, lcc, per, t0, dur, ax):
     """
@@ -737,3 +747,361 @@ def stellar_params(ticid):
     param_string = rf'(RA, dec)={coords}, $R_\bigstar$={rstar} $R_\odot$, logg={logg}, {teffstring}={teff} K, V={float(V):.2f}'
 
     return param_string, rstar_val
+
+def plot_vetting_summary(target, outdir='', save_fig=True, quick=False):
+    """
+    Produce a summary plot for a given target.
+
+    Parameters
+    ----------
+    target : giants.Target
+        Target object to plot.
+    outdir : str
+        Path to the output directory.
+    save_fig : bool
+        Flag to indicate whether to save the figure.
+    """
+
+    font = {'family' : 'sans',
+        'size'   : 14}
+    matplotlib.rc('font', **font)
+    plt.style.use('seaborn-muted')
+
+    lc = target.lc
+    lcc = target.lcc
+    ticid = target.ticid
+    tpf = target.tpf
+    aperture_mask = target.aperture_mask
+    sectors = target.used_sectors
+
+    mask = target.link_mask[~target.mask]
+    try:
+        target.lc = target.lc[mask] # PHT HACK
+    except:
+        target.lc = target.lc
+
+    bls_results, bls_stats = get_bls_results(lc)
+    period = bls_results.period[np.argmax(bls_results.power)].value
+    t0 = bls_results.transit_time[np.argmax(bls_results.power)].value
+    depth = bls_results.depth[np.argmax(bls_results.power)].value
+    depth_snr = depth / np.std(lc.flux.value)
+    dur = bls_stats['duration'].value * 24.
+
+    if quick:
+        dither_tpf_col = 0
+        dither_lc_col = 7
+        dither_compare_col = 0
+        dither_compare_colspan = 16
+
+        size_tpf_col = 16
+        size_lc_col = 23
+        size_compare_col = 16
+        size_compare_colspan = 16
+
+        dims = (27, 30)
+    else:
+        dither_tpf_col = 0
+        dither_lc_col = 7
+        dither_bls_col = 16
+        dither_compare_col = 0
+        dither_compare_colspan = 22
+
+        size_tpf_col = 24
+        size_lc_col = 31
+        size_bls_col = 40
+        size_compare_col = 24
+        size_compare_colspan = 22
+
+        dims = (27, 47)
+    
+    fig = plt.figure(figsize=dims[::-1], dpi=250)
+    ax_top = plt.subplot2grid(dims, (0, 0), colspan=dims[1], rowspan=1)
+    ax_top.axis('off')
+    ax_bot = plt.subplot2grid(dims, (dims[0]-1, 0), colspan=dims[1], rowspan=1)
+    ax_bot.axis('off')
+    ax_top.set_title(f'TIC {ticid} Vetting', fontweight='bold', size=24, y=0.93)
+
+    aperture_mask_empty = np.zeros((11,11), dtype='bool')
+
+    """
+    Define dithered apertures
+    """
+    aperture_mask_center = aperture_mask_empty.copy()
+    for i in range(4):
+        aperture_mask_center[i+4,4:8] = True
+    aperture_mask_ul = aperture_mask_empty.copy()
+    for i in range(4):
+        aperture_mask_ul[i+7,1:5] = True
+    aperture_mask_ur = aperture_mask_empty.copy()
+    for i in range(4):
+        aperture_mask_ur[i+7,7:11] = True
+    aperture_mask_ll = aperture_mask_empty.copy()
+    for i in range(4):
+        aperture_mask_ll[i+1,1:5] = True
+    aperture_mask_lr = aperture_mask_empty.copy()
+    for i in range(4):
+        aperture_mask_lr[i+1,7:11] = True
+
+    """
+    Define larger apertures
+    """
+    aperture_mask_2x2 = aperture_mask_empty.copy()
+    for i in range(2):
+        aperture_mask_2x2[i+5,5:7] = True
+    aperture_mask_4x4 = aperture_mask_empty.copy()
+    for i in range(4):
+        aperture_mask_4x4[i+4,4:8] = True
+    aperture_mask_6x6 = aperture_mask_empty.copy()
+    for i in range(6):
+        aperture_mask_6x6[i+3,3:9] = True
+    aperture_mask_8x8 = aperture_mask_empty.copy()
+    for i in range(8):
+        aperture_mask_8x8[i+2,2:10] = True
+    aperture_mask_10x10 = aperture_mask_empty.copy()
+    for i in range(10):
+        aperture_mask_10x10[i+1,1:11] = True
+        
+    """
+    Plot dithered apertures
+    """
+    ax = plt.subplot2grid(dims, (1, dither_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_center, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    ax = plt.subplot2grid(dims, (6, dither_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_ul, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    ax = plt.subplot2grid(dims, (11, dither_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_ur, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    ax = plt.subplot2grid(dims, (16, dither_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_ll, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    ax = plt.subplot2grid(dims, (21, dither_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_lr, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    """
+    Plot dithered folded light curves
+    """
+    ax = plt.subplot2grid(dims, (1, dither_lc_col), colspan=7, rowspan=4)
+    lc_center = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_center)
+    plot_folded(lc_center, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    ax = plt.subplot2grid(dims, (6, dither_lc_col), colspan=7, rowspan=4)
+    lc_ul = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_ul)
+    plot_folded(lc_ul, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    ax = plt.subplot2grid(dims, (11, dither_lc_col), colspan=7, rowspan=4)
+    lc_ur = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_ur)
+    plot_folded(lc_ur, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    ax = plt.subplot2grid(dims, (16, dither_lc_col), colspan=7, rowspan=4)
+    lc_ll = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_ll)
+    plot_folded(lc_ll, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    ax = plt.subplot2grid(dims, (21, dither_lc_col), colspan=7, rowspan=4)
+    lc_lr = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_lr)
+    plot_folded(lc_lr, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    """
+    Plot dithered BLS
+    """
+    if not quick:
+        ax = plt.subplot2grid(dims, (1, dither_bls_col), colspan=7, rowspan=4)
+        bls_center = get_bls_results(lc_center)[0]
+        ax.plot(bls_center.period, bls_center.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue', label='OG period')
+        ax.legend(loc='upper right')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+        ax = plt.subplot2grid(dims, (6, dither_bls_col), colspan=7, rowspan=4)
+        bls_ul = get_bls_results(lc_ul)[0]
+        ax.plot(bls_ul.period, bls_ul.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue', label='OG period')
+        ax.legend(loc='upper right')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+        ax = plt.subplot2grid(dims, (11, dither_bls_col), colspan=7, rowspan=4)
+        bls_ur = get_bls_results(lc_ur)[0]
+        ax.plot(bls_ur.period, bls_ur.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue', label='OG period')
+        ax.legend(loc='upper right')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+        ax = plt.subplot2grid(dims, (16, dither_bls_col), colspan=7, rowspan=4)
+        bls_ll = get_bls_results(lc_ll)[0]
+        ax.plot(bls_ll.period, bls_ll.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue', label='OG period')
+        ax.legend(loc='upper right')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+        ax = plt.subplot2grid(dims, (21, dither_bls_col), colspan=7, rowspan=4)
+        bls_lr = get_bls_results(lc_lr)[0]
+        ax.plot(bls_lr.period, bls_lr.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue', label='OG period')
+        ax.legend(loc='upper right')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+    """
+    Plot larger apertures
+    """
+    ax = plt.subplot2grid(dims, (1, size_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_2x2, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    ax = plt.subplot2grid(dims, (6, size_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_4x4, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    ax = plt.subplot2grid(dims, (11, size_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_6x6, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    ax = plt.subplot2grid(dims, (16, size_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_8x8, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    ax = plt.subplot2grid(dims, (21, size_tpf_col), colspan=5, rowspan=5)
+    plot_tpf(tpf, ticid, aperture_mask_10x10, ax, show_colorbar=False, show_gaia_overlay=False)
+    ax.set_title('')
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
+    """
+    Plot larger folded light curves
+    """
+    ax = plt.subplot2grid(dims, (1, size_lc_col), colspan=7, rowspan=4)
+    lc_2x2 = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_2x2)
+    plot_folded(lc_2x2, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    ax = plt.subplot2grid(dims, (6, size_lc_col), colspan=7, rowspan=4)
+    lc_4x4 = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_4x4)
+    plot_folded(lc_4x4, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    ax = plt.subplot2grid(dims, (11, size_lc_col), colspan=7, rowspan=4)
+    lc_6x6 = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_6x6)
+    plot_folded(lc_6x6, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    ax = plt.subplot2grid(dims, (16, size_lc_col), colspan=7, rowspan=4)
+    lc_8x8 = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_8x8)
+    plot_folded(lc_8x8, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    ax = plt.subplot2grid(dims, (21, size_lc_col), colspan=7, rowspan=4)
+    lc_10x10 = target.apply_pca_corrector(target.tpf, aperture_mask=aperture_mask_10x10)
+    plot_folded(lc_10x10, period, t0, depth, dur, ax)
+    ax.get_legend().remove()
+
+    """
+    Plot larger BLS
+    """
+    if not quick:
+        ax = plt.subplot2grid(dims, (1, size_bls_col), colspan=7, rowspan=4)
+        bls_2x2 = get_bls_results(lc_2x2)[0]
+        ax.plot(bls_2x2.period, bls_2x2.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+        ax = plt.subplot2grid(dims, (6, size_bls_col), colspan=7, rowspan=4)
+        bls_4x4 = get_bls_results(lc_4x4)[0]
+        ax.plot(bls_4x4.period, bls_4x4.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+        ax = plt.subplot2grid(dims, (11, size_bls_col), colspan=7, rowspan=4)
+        bls_6x6 = get_bls_results(lc_6x6)[0]
+        ax.plot(bls_6x6.period, bls_6x6.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+        ax = plt.subplot2grid(dims, (16, size_bls_col), colspan=7, rowspan=4)
+        bls_8x8 = get_bls_results(lc_8x8)[0]
+        ax.plot(bls_8x8.period, bls_8x8.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
+
+        ax = plt.subplot2grid(dims, (21, size_bls_col), colspan=7, rowspan=4)
+        bls_10x10 = get_bls_results(lc_10x10)[0]
+        ax.plot(bls_10x10.period, bls_10x10.power, "k", lw=1)
+        ax.axvline(period, alpha=0.4, lw=4, c='cornflowerblue')
+        for n in range(2, 10):
+            ax.axvline(n*period, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+            ax.axvline(period / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
+        ax.set_xlabel("period [days]")
+        ax.set_ylabel("log likelihood")
