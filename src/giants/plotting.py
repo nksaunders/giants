@@ -599,7 +599,7 @@ def plot_tpf(tpf, ticid, aperture_mask, ax, show_colorbar=True, show_gaia_overla
         mask_color='k'
     else:
         mask_color='r'
-        
+
     fnumber = 100
     ax = tpf.plot(ax=ax, show_colorbar=show_colorbar, frame=fnumber, 
                          aperture_mask=aperture_mask, mask_color=mask_color,
@@ -1105,3 +1105,9 @@ def plot_vetting_summary(target, outdir='', save_fig=True, quick=False):
         ax.set_xlim(bls_results.period.min().value, bls_results.period.max().value)
         ax.set_xlabel("period [days]")
         ax.set_ylabel("log likelihood")
+
+    if save_fig:
+        try:
+            fig.savefig(str(outdir)+'/plots/'+str(ticid)+'_vetting.png', bbox_inches='tight')
+        except:
+            fig.savefig(str(outdir)+str(ticid)+'_vetting.png', bbox_inches='tight')
