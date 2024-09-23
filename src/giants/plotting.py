@@ -3,13 +3,17 @@ import numpy as np
 import scipy
 import matplotlib.pyplot as plt
 import matplotlib
-from astropy.stats import BoxLeastSquares
 from astropy.coordinates import SkyCoord, Angle
 import lightkurve as lk
 import astropy.units as u
 import pickle
 from astroquery.mast import Catalogs
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
+try:
+    from astropy.stats import BoxLeastSquares
+except:
+    from astropy.timeseries import BoxLeastSquares
 
 try:
     from .utils import build_ktransit_model, parse_sectors
@@ -748,7 +752,7 @@ def stellar_params(ticid):
 
     return param_string, rstar_val
 
-def plot_vetting_summary(target, outdir='', save_fig=True, quick=False):
+def plot_vetting_summary(target, outdir='', period=None, t0=None, save_fig=True, quick=True):
     """
     Produce a summary plot for a given target.
 
@@ -780,12 +784,17 @@ def plot_vetting_summary(target, outdir='', save_fig=True, quick=False):
     except:
         target.lc = target.lc
 
-    bls_results, bls_stats = get_bls_results(lc)
-    period = bls_results.period[np.argmax(bls_results.power)].value
-    t0 = bls_results.transit_time[np.argmax(bls_results.power)].value
-    depth = bls_results.depth[np.argmax(bls_results.power)].value
-    depth_snr = depth / np.std(lc.flux.value)
-    dur = bls_stats['duration'].value * 24.
+    if period is None:
+        bls_results, bls_stats = get_bls_results(lc)
+        period = bls_results.period[np.argmax(bls_results.power)].value
+        t0 = bls_results.transit_time[np.argmax(bls_results.power)].value
+        depth = bls_results.depth[np.argmax(bls_results.power)].value
+        depth_snr = depth / np.std(lc.flux.value)
+        dur = bls_stats['duration'].value * 24.
+
+    else:
+        depth = np.std(lc.flux.value) * 2
+        dur = 0.2
 
     if quick:
         dither_tpf_col = 0
@@ -819,7 +828,7 @@ def plot_vetting_summary(target, outdir='', save_fig=True, quick=False):
     ax_top.axis('off')
     ax_bot = plt.subplot2grid(dims, (dims[0]-1, 0), colspan=dims[1], rowspan=1)
     ax_bot.axis('off')
-    ax_top.set_title(f'TIC {ticid} Vetting', fontweight='bold', size=24, y=0.93)
+    ax_top.set_title(f'TIC {ticid} Vetting, P = {period:.4f} d, t0 = {t0:.4f}', fontweight='bold', size=24, y=0.93)
 
     aperture_mask_empty = np.zeros((11,11), dtype='bool')
 

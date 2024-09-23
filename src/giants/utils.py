@@ -1,5 +1,4 @@
 import numpy as np
-from astropy.stats import BoxLeastSquares
 import lightkurve as lk
 import astropy.units as u
 from scipy.constants import G
