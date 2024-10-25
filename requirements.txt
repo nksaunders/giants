@@ -2,7 +2,7 @@ numpy
 astropy==5.2.2
 matplotlib
 lightkurve
-astroquery==0.4.2
+astroquery==0.4.1
 pandas
 astropy
 ktransit
