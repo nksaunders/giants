@@ -162,8 +162,8 @@ class Target(object):
             aperture_mask = tpf._parse_aperture_mask('threshold')
             if np.sum(aperture_mask) == 0:
                 aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
-                aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
-                              round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
+                aperture_mask[round(tpf.shape[1]/2)-1:round(tpf.shape[1]/2)+1, \
+                                round(tpf.shape[2]/2)-1:round(tpf.shape[2]/2)+1] = True
                 
             try:
                 new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
