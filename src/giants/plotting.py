@@ -251,8 +251,6 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     # fig.set_size_inches([d-1 for d in dims[::-1]])
     fig.set_size_inches([33, 25.5])
 
-    plt.show()
-
     if save_fig:
         try:
             fig.savefig(os.path.join(outdir,'/plots/'+str(ticid)+'_summary.png'), bbox_inches='tight')
