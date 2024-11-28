@@ -22,7 +22,7 @@ except:
 
 __all__ = ['plot_summary']
 
-def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
+def add_gaia_figure_elements(tpf, coords, fig, magnitude_limit=18):
     """
     Add Gaia DR2 sources to a TPF plot.
 
@@ -41,7 +41,7 @@ def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
         Figure with Gaia sources plotted.
     """
     # Get the positions of the Gaia sources
-    c1 = SkyCoord(tpf.ra, tpf.dec, frame='icrs', unit='deg')
+    c1 = coords
     # Use pixel scale for query size
     pix_scale = 21.0
     # We are querying with a diameter as the radius, overfilling by 2x.
@@ -609,7 +609,7 @@ def plot_even(lc, period, t0, depth, dur, ax):
 
     plt.grid(True)
 
-def plot_tpf(tpf, ticid, aperture_mask, ax, show_colorbar=True, show_gaia_overlay=True):
+def plot_tpf(tpf, coords, ticid, aperture_mask, ax, show_colorbar=True, show_gaia_overlay=True):
     """
     Plot the TPF for a given target.
 
@@ -630,7 +630,7 @@ def plot_tpf(tpf, ticid, aperture_mask, ax, show_colorbar=True, show_gaia_overla
                          aperture_mask=aperture_mask, mask_color=mask_color,
                          title=f'TIC {ticid}, cadence {fnumber}')
     if show_gaia_overlay:
-        ax = add_gaia_figure_elements(tpf, ax)
+        ax = add_gaia_figure_elements(tpf, coords, ax)
     else:
         plt.xlim([tpf.column+0.5, tpf.column+tpf.shape[1]-0.5])
         plt.ylim([tpf.row+0.5, tpf.row+tpf.shape[2]-0.5])
@@ -903,7 +903,7 @@ def plot_vetting_summary(target, outdir='', period=None, t0=None, save_fig=True,
     Plot dithered apertures
     """
     ax = plt.subplot2grid(dims, (1, dither_tpf_col), colspan=5, rowspan=5)
-    plot_tpf(tpf, ticid, aperture_mask_center, ax, show_colorbar=False, show_gaia_overlay=False)
+    plot_tpf(tpf, target.coords, ticid, aperture_mask_center, ax, show_colorbar=False, show_gaia_overlay=False)
     ax.set_title('')
     ax.set_xlabel('')
     ax.set_ylabel('')
