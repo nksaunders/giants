@@ -518,7 +518,7 @@ class Target(object):
             lc = self.from_local_data('/data/users/nsaunders/cubes')
 
         elif lc_source == 'mendel':
-            lc = self.from_local_data_mendel(sectors=None, aperture_mask=None, flatten=True, n_pca=5)
+            lc = self.from_local_data_mendel(sectors=sectors, aperture_mask=aperture_mask, flatten=flatten, n_pca=5)
 
         lc = self._clean_data(lc)
 
