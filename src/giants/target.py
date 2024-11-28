@@ -261,6 +261,8 @@ class Target(object):
         self.breakpoints = []
         self.used_sectors = []
     
+        lc = None
+        
         # apply the pca background correction
         for tpf in tpfc:
             if aperture_mask is None:
