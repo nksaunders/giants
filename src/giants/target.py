@@ -187,7 +187,7 @@ class Target(object):
             try:
                 new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
                                                   aperture_mask=aperture_mask, n_pca=n_pca, pipeline_call=True)
-                new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
+                new_raw_lc = tpf.to_lightcurve(aperture_mask=aperture_mask)
 
                 # stitch together
                 if lc is None:
@@ -267,26 +267,26 @@ class Target(object):
                 aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
                 aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
                               round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
-            try:
-                new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
-                                                  aperture_mask=aperture_mask, n_pca=n_pca, pipeline_call=True)
-                new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
+            # try:
+            new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
+                                                aperture_mask=aperture_mask, n_pca=n_pca, pipeline_call=True)
+            new_raw_lc = tpf.to_lightcurve(aperture_mask=aperture_mask)
 
-                # stitch together
-                if lc is None:
-                    self.tpf = tpf
-                    self.aperture_mask = aperture_mask
-                    lc = new_lc
-                    raw_lc = new_raw_lc
-                else:
-                    lc = lc.append(new_lc)
-                    raw_lc = raw_lc.append(new_raw_lc)
+            # stitch together
+            if lc is None:
+                self.tpf = tpf
+                self.aperture_mask = aperture_mask
+                lc = new_lc
+                raw_lc = new_raw_lc
+            else:
+                lc = lc.append(new_lc)
+                raw_lc = raw_lc.append(new_raw_lc)
 
-                self.breakpoints.append(new_lc.time[-1])
-                self.used_sectors.append(tpf.sector)
-                self.lcc.append(new_lc)
-            except:
-                continue
+            self.breakpoints.append(new_lc.time[-1])
+            self.used_sectors.append(tpf.sector)
+            self.lcc.append(new_lc)
+            # except:
+            #     continue
 
         self.lc = lc
         self.raw_lc = raw_lc
