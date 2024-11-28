@@ -253,6 +253,13 @@ class Target(object):
 
         self.tpfc = tpfc
         self.tpf = tpfc[0]
+
+        self.model_lcc = lk.LightCurveCollection([])
+
+        self.link_mask = []
+        self.lcc = lk.LightCurveCollection([])
+        self.breakpoints = []
+        self.used_sectors = []
     
         # apply the pca background correction
         for tpf in tpfc:
