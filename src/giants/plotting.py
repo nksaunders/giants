@@ -73,8 +73,8 @@ def add_gaia_figure_elements(tpf, fig, magnitude_limit=18):
 
     plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='r', alpha=0.5, edgecolors='r', s=sizes)
     plt.scatter(coords[:, 0]+tpf.column, coords[:, 1]+tpf.row, c='None', edgecolors='r', s=sizes)
-    plt.xlim([tpf.column+0.5, tpf.column+tpf.shape[1]-0.5])
-    plt.ylim([tpf.row+0.5, tpf.row+tpf.shape[2]-0.5])
+    plt.xlim([tpf.column-0.5, tpf.column+tpf.shape[1]-0.5])
+    plt.ylim([tpf.row-0.5, tpf.row+tpf.shape[2]-0.5])
     plt.axis('off')
 
     return fig
@@ -134,7 +134,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
             np.savetxt(outdir+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
 
     # fit BLS
-    bls_results, bls_stats = get_bls_results(lc)
+    bls_results, bls_stats, bls_model = get_bls_results(lc)
     period = bls_results.period[np.argmax(bls_results.power)]
     t0 = bls_results.transit_time[np.argmax(bls_results.power)]
     depth = bls_results.depth[np.argmax(bls_results.power)]
@@ -146,24 +146,17 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     max_power = max(sde)
 
     try:
-        # generate ktransit fit
-        model_lc, ktransit_model = fit_transit_model(lc, period, t0)
-        result = ktransit_model.fitresult[1:]
-        kt_period = result[0]
-        kt_t0 = result[2]
-
-        scaled_residuals = np.median(ktransit_model.residuals()) / np.std(lc.flux.value)
+        bls_model_flux = bls_model.model(lc.time, period, dur / 24., t0)
+        model_lc = lk.LightCurve(time=lc.time, flux=bls_model_flux)
+        scaled_residuals = np.median(lc.flux.value - bls_model_flux.value) / np.std(lc.flux.value)
 
     except:
         model_lc = None
-        kt_period = period
-        kt_t0 = t0
-
         scaled_residuals = np.nan
 
     # save the transit stats
     with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
-                file.write(f"{ticid} {depth} {depth_snr} {period} {t0} {dur} {scaled_residuals} {harmonic_del} {max_power}\n")
+                file.write(f"{ticid} {depth} {depth_snr} {period.value} {t0} {dur} {scaled_residuals} {harmonic_del} {max_power}\n")
 
     """Create the figure."""
     dims = (27, 36)
@@ -175,30 +168,56 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     ax_top.set_title(f'TIC {ticid}', fontweight='bold', size=24, y=0.93)
     
     # set title to include stellar params
-    param_string, rstar = stellar_params(ticid)
+    if target.has_target_info:
+        try:
+            coord_string = f'({target.ra:.2f}, {target.dec:.2f})'
+        except:
+            coord_string = '?'
+        try:
+            rstar_string = f'{target.rstar:.2f}'
+            rstar = target.rstar
+        except:
+            rstar_string = '?'
+            rstar = np.nan
+        try:
+            teff_string = f'{target.teff:.0f}'
+        except:
+            teff_string = '?'
+        try:
+            logg_string = f'{target.logg:.2f}'
+        except:
+            logg_string = '?'
+        try:
+            V_string = f'{target.vmag:.2f}'
+        except:
+            V_string = '?'
+        tefflabel = r'T$_{\rm eff}$'
+        param_string = rf'(RA, dec)={coord_string}, $R_\bigstar$={rstar_string} $R_\odot$, logg={logg_string}, {tefflabel}={teff_string} K, V={V_string}'
+    else:
+        param_string, rstar = stellar_params(ticid)
     ax_top.annotate(param_string, size=20, xy=(0.5, 0.65), xycoords='axes fraction', ha='center', va='center')
 
     # plot the raw light curve
     ax = plt.subplot2grid(dims, (1, 0), colspan=dims[1], rowspan=4)
     ax.axis('off')
-    plot_raw_lc(lcc, sectors, model_lc, kt_period, kt_t0, depth, ax)
+    plot_raw_lc(lcc, sectors, model_lc, period, t0, depth, ax)
 
     # plot the folded light curve
     ax = plt.subplot2grid(dims, (7,0), colspan=18, rowspan=4)
-    plot_folded(lc, kt_period, kt_t0, depth, dur, ax)
+    plot_folded(lc, period.value, t0.value, depth, dur, ax)
 
     # plot the odd and even transits
     ax = plt.subplot2grid(dims, (12,0), colspan=9, rowspan=4)
-    plot_even(lc, kt_period, kt_t0, depth, dur, ax)
+    plot_even(lc, period.value, t0.value, depth, dur, ax)
     ax = plt.subplot2grid(dims, (12,9), colspan=9, rowspan=4)
-    plot_odd(lc, kt_period, kt_t0, depth, dur, ax)
+    plot_odd(lc, period.value, t0.value, depth, dur, ax)
     plt.subplots_adjust(wspace=0)
     ax.set_yticklabels([])
     ax.set_ylabel('')
 
     # include the transit stats table
     ax = plt.subplot2grid(dims, (7,19), colspan=5, rowspan=9)
-    plot_table(ktransit_model, depth_snr, dur, scaled_residuals, rstar, ax)
+    plot_table(period, t0, depth, depth_snr, dur, scaled_residuals, rstar, ax)
 
     # plot the TPF
     ax = plt.subplot2grid(dims, (7,25), colspan=11, rowspan=9)
@@ -206,11 +225,11 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # plot the transit model
     ax = plt.subplot2grid(dims, (18,0), colspan=12, rowspan=6)
-    plot_tr_top(lc, model_lc, kt_period, kt_t0, depth, ax)
+    plot_tr_top(lc, model_lc, period.value, t0.value, depth, ax)
 
     # plot the residuals
     ax = plt.subplot2grid(dims, (24,0), colspan=12, rowspan=3)
-    plot_tr_bottom(lc, model_lc, kt_period, kt_t0, depth, ax)
+    plot_tr_bottom(lc, model_lc, period.value, t0.value, depth, ax)
     plt.subplots_adjust(hspace=0)
 
     # plot the BLS periodogram
@@ -225,7 +244,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # plot the difference image
     ax = plt.subplot2grid(dims, (18, 25), colspan=11, rowspan=9)
-    plot_diff_image(tpf, lcc, kt_period, kt_t0, dur, ax)
+    plot_diff_image(tpf, lcc, period.value, t0.value, dur, ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
@@ -288,12 +307,12 @@ def plot_raw_lc(lcc, sectors, model_lc, per, t0, depth, ax=None):
                            bbox_transform=ax.transAxes)
         lc.scatter(ax=ax_in, c='gray', s=75, alpha=0.4, edgecolor='None')
 
-        n_transits = round((lcc[-1].time.value[-1] - lcc[0].time.value[0]) / per)
+        n_transits = round((lcc[-1].time.value[-1] - lcc[0].time.value[0]) / per.value)
         transit_times = t0 + np.arange(n_transits) * per
-        tt_masked = transit_times[(transit_times > lc.time.value[0]) & (transit_times < lc.time.value[-1])]
+        tt_masked = transit_times[(transit_times > lc.time[0]) & (transit_times < lc.time[-1])]
         tt_y = np.ones_like(tt_masked) * .9 * (np.min(model_lc.flux.value)-depth*4)
 
-        ax_in.scatter(tt_masked, tt_y, color='r', marker='^', s=75, edgecolors='None', zorder=10000)
+        ax_in.scatter(tt_masked.value, tt_y, color='r', marker='^', s=75, edgecolors='None', zorder=10000)
         if len(sectors) < 15:
             ax_in.set_title(f'Sector {sectors[i]}')
             ax_in.set_xlabel('Time [BTJD]')
@@ -408,6 +427,10 @@ def plot_fft(freq, fts, ax=None):
     if ax is None:
         _, ax = plt.subplots(1)
 
+    nanmask = np.isnan(fts)
+    freq = freq[~nanmask]
+    fts = fts[~nanmask]
+
     ax.loglog(freq, fts/np.max(fts), c='dodgerblue')
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 5), color='gold', lw=1.5)
     ax.loglog(freq, scipy.ndimage.filters.gaussian_filter(fts/np.max(fts), 50), color='r', lw=1.5)
@@ -416,8 +439,6 @@ def plot_fft(freq, fts, ax=None):
     ax.set_ylabel("Power")
     ax.set_xlim(10, 400)
     ax.set_ylim(1e-4, 1e0)
-
-    return freq, fts
 
 def get_bls_results(lc):
     """
@@ -465,7 +486,7 @@ def get_bls_results(lc):
     stats['period'] = results.period[np.argmax(results.power)]
     stats['duration'] = results.duration[np.argmax(results.power)]
 
-    return results, stats
+    return results, stats, model
 
 def plot_bls(lc, ax, results=None):
     """
@@ -624,30 +645,30 @@ def plot_diff_image(tpf, lcc, per, t0, dur, ax):
     transit_times = t0 + np.arange(n_transits) * per
 
     resid_frames = []
-    try:
-        for tt in transit_times[transit_times < tpf.time.value[-1]]:
-            try:
-                t_frames = np.where([np.min(np.abs(tt - t)) < (dur/2)/24. for t in tpf.time.value])
-                nt_frames = np.where([np.min(np.abs(tt + (dur/24.) - t)) < (dur/2)/24. for t in tpf.time.value])
-                rf = np.nanmean(tpf.flux.value[t_frames], axis=0) - np.nanmean(tpf.flux.value[nt_frames], axis=0)
-                if np.nansum(rf) == 0:
-                    continue
-                else:
-                    resid_frames.append(rf)
-            except:
+    # try:
+    for tt in transit_times[transit_times < tpf.time.value[-1]]:
+        try:
+            t_frames = np.where([np.min(np.abs(tt - t)) < (dur/2)/24. for t in tpf.time.value])
+            nt_frames = np.where([np.min(np.abs(tt + (dur/24.) - t)) < (dur/2)/24. for t in tpf.time.value])
+            rf = np.nanmean(tpf.flux.value[t_frames], axis=0) - np.nanmean(tpf.flux.value[nt_frames], axis=0)
+            if np.nansum(rf) == 0:
                 continue
+            else:
+                resid_frames.append(rf)
+        except:
+            continue
 
-        residual = np.nanmedian(resid_frames, axis=0)
-        mappable = plt.imshow(residual)
-        plt.xlim(-.5, 10.5)
-        plt.ylim(-.5, 10.5)
-        plt.colorbar(mappable, label='Residual Counts')
-        ax.set_title('(In - Out) Transit')
-    except:
-        tpf.plot(frame=100, ax=ax)
-        ax.annotate('Difference Image Failed', xy=(0.5, 0.1), xycoords='axes fraction', 
-                    fontsize=28, ha='center', va='center', backgroundcolor='w', 
-                    bbox=dict(facecolor='w', alpha=0.75, edgecolor='black'))
+    residual = np.nanmedian(resid_frames, axis=0)
+    mappable = plt.imshow(residual)
+    plt.xlim(-.5, 10.5)
+    plt.ylim(-.5, 10.5)
+    plt.colorbar(mappable, label='Residual Counts')
+    ax.set_title('(In - Out) Transit')
+    # except:
+    #     tpf.plot(frame=100, ax=ax)
+    #     ax.annotate('Difference Image Failed', xy=(0.5, 0.1), xycoords='axes fraction', 
+    #                 fontsize=28, ha='center', va='center', backgroundcolor='w', 
+    #                 bbox=dict(facecolor='w', alpha=0.75, edgecolor='black'))
 
     plt.set_cmap('gray')
     ax.set_xticks([])
@@ -670,7 +691,7 @@ def plot_in_out_check(target, period, t0, depth, ax):
 
     ax.legend(loc='lower right', fontsize=16)
 
-def plot_table(ktransit_model, depth_snr, dur, resid, rstar, ax):
+def plot_table(period, t0, depth, depth_snr, dur, scaled_residuals, rstar, ax):
     """
     Include a table of transit parameters in the summary plot.
 
@@ -689,15 +710,23 @@ def plot_table(ktransit_model, depth_snr, dur, resid, rstar, ax):
     ax : matplotlib.pyplot.axis
         Axis to plot on.
     """
-    result = ktransit_model.fitresult[1:]
 
-    col_labels = ['Period (days)', r'$b$', r'$t_0$ (BTJD)', r'$R_p$ / $R_\bigstar$', r'$R_P$ ($R_J$)', 'Duration (hours)', 'Depth SNR', 'Scaled Likelihood']
-    values = [f'{np.abs(val):.5f}' for val in result]
+    rprs = np.sqrt(depth)
+    rp_string = f'{rprs*rstar*9.731:.3f}'
 
-    values.append(f'{float(values[-1]) * rstar * 9.731:.3f}')
-    values.append(f'{dur:.3f}')
-    values.append(f'{depth_snr:.3f}')
-    values.append(f'{resid:.3f}')
+    if np.isnan(rstar):
+        rstar = 1.0
+        rp_string = f'{rprs*rstar*9.731:.3f}*'
+    # result = ktransit_model.fitresult[1:]
+
+    col_labels = ['Period (days)', r'$t_0$ (BTJD)', r'$R_p$ / $R_\bigstar$', r'$R_P$ ($R_J$)', 'Duration (hours)', 'Depth SNR', 'Scaled Likelihood']
+    values = [f'{period.value:.5f}', f'{t0.value:.5f}', f'{rprs:.5f}', rp_string, f'{dur:.3f}', f'{depth_snr:.3f}', f'{scaled_residuals:.3f}']
+    # values = [f'{np.abs(val):.5f}' for val in result]
+
+    # values.append(f'{float(values[-1]) * rstar * 9.731:.3f}')
+    # values.append(f'{dur:.3f}')
+    # values.append(f'{depth_snr:.3f}')
+    # values.append(f'{resid:.3f}')
 
     ax.axis('tight')
     # ax.set_xticks([])

@@ -1,13 +1,15 @@
 import os
 import re
+import glob
 import numpy as np
 import pandas as pd
 import scipy
 import lightkurve as lk
 import warnings
+import astropy.units as u
 from tess_stars2px import tess_stars2px_function_entry
-from astrocut import CutoutFactory
 from astroquery.mast import Catalogs
+from astropy.coordinates import SkyCoord
 
 from . import PACKAGEDIR
 from .plotting import plot_summary
@@ -30,7 +32,7 @@ class Target(object):
         suppress print statements
     """
 
-    def __init__(self, ticid, silent=False):
+    def __init__(self, ticid, target_info=None, silent=False):
 
         # parse TIC ID
         self.ticid = ticid
@@ -41,8 +43,20 @@ class Target(object):
         self.has_target_info = False
         self.silent = silent
 
-        self.get_target_info(self.ticid)
-        self.available_sectors = self.check_available_sectors()
+        if target_info is None:
+            self.get_target_info(self.ticid)
+        else:
+            self.ra = target_info['ra']
+            self.dec = target_info['dec']
+            self.coords = SkyCoord(ra=self.ra, dec=self.dec, unit=(u.deg, u.deg))
+            self.rstar = target_info['rstar']
+            self.teff = target_info['teff']
+            self.logg = target_info['logg']
+            self.vmag = target_info['vmag']
+            self.has_target_info = True
+
+        self.available_sectors, self.cameras, self.ccds = self.fetch_obs(self.ra, self.dec)
+        # self.available_sectors = self.check_available_sectors()
 
     def __repr__(self):
 
@@ -61,7 +75,7 @@ class Target(object):
         
         self.ra = catalog_data['ra'][0]
         self.dec = catalog_data['dec'][0]
-        self.coords = f'({self.ra:.2f}, {self.dec:.2f})'
+        self.coords = SkyCoord(ra=self.ra, dec=self.dec, unit=(u.deg, u.deg))
         self.rstar = catalog_data['rad'][0]
         self.teff = catalog_data['Teff'][0]
 
@@ -92,7 +106,7 @@ class Target(object):
 
         return available_sectors
     
-    def from_lightkurve(self, sectors=None, flatten=True, n_pca=5, **kwargs):
+    def from_lightkurve(self, sectors=None, flatten=True, n_pca=5, aperture_mask=None, **kwargs):
         """
         Use `lightkurve.search_tesscut` to query and download TESSCut 11x11 cutout for target.
         This function creates a background model and subtracts it off using `lightkurve.RegressionCorrector`.
@@ -111,6 +125,8 @@ class Target(object):
         lc : `lightkurve.LightCurve` object
             background-corrected flux time series
         """
+
+        self.available_sectors = self.check_available_sectors()
 
         # apply sector mask
         if sectors is not None:
@@ -157,14 +173,17 @@ class Target(object):
         
         # apply the pca background correction
         for tpf in tpfc:
-
-            # define threshold aperture mask
-            aperture_mask = tpf._parse_aperture_mask('threshold')
-            if np.sum(aperture_mask) == 0:
+            if aperture_mask is None:
+                # define threshold aperture mask
+                aperture_mask = tpf._parse_aperture_mask('threshold')
+                if np.sum(aperture_mask) == 0:
+                    aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
+                    aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
+                                  round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
+            elif aperture_mask == 'center':
                 aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
-                aperture_mask[round(tpf.shape[1]/2)-1:round(tpf.shape[1]/2)+1, \
-                                round(tpf.shape[2]/2)-1:round(tpf.shape[2]/2)+1] = True
-                
+                aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
+                              round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
             try:
                 new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
                                                   aperture_mask=aperture_mask, n_pca=n_pca, pipeline_call=True)
@@ -192,9 +211,93 @@ class Target(object):
 
         return lc
     
+    def from_local_data_mendel(self, sectors=None, aperture_mask='center', flatten=False, n_pca=5, **kwargs):
+        """
+        Retrieve data from local FFI data on Mendel.
+
+        Parameters
+        ----------
+        sectors : int, list of ints
+            desired sector number or list of sector numbers
+        flatten : bool
+            optionally flatten the light curve
+
+        Returns
+        -------
+        lc : `lightkurve.LightCurve` object
+            background-corrected flux time series
+        """
+
+        if sectors is None:
+            sectors = self.available_sectors
+
+        tpfs = []
+
+        ffi_path = '/shared_data/osn/astro-tessdata/ffi/'
+
+        for i, sector in enumerate(sectors):
+            cam = self.cameras[i]
+            ccd = self.ccds[i]
+
+            fits_image_paths = glob.glob(os.path.join(ffi_path, f's{sector:04}/*/*/{cam}-{ccd}/*.fits'))
+            fits_image_paths.sort()
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                tpf = lk.TessTargetPixelFile.from_fits_images(fits_image_paths, position=self.coords, size=(11, 11), 
+                                                              target_id=f'TIC {self.ticid}', hdu0_keywords={'sector':sector})
+            tpf.targetid = f'TIC {self.ticid}'
+            tpfs.append(tpf)
+
+        tpfc = lk.TargetPixelFileCollection(tpfs)
+
+        self.tpfc = tpfc
+        self.tpf = tpfc[0]
+    
+        # apply the pca background correction
+        for tpf in tpfc:
+            if aperture_mask is None:
+                # define threshold aperture mask
+                aperture_mask = tpf._parse_aperture_mask('threshold')
+                if np.sum(aperture_mask) == 0:
+                    aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
+                    aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
+                                round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
+            elif aperture_mask == 'center':
+                aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
+                aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
+                              round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
+            try:
+                new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
+                                                  aperture_mask=aperture_mask, n_pca=n_pca, pipeline_call=True)
+                new_raw_lc = tpf.to_lightcurve(aperture_mask='threshold')
+
+                # stitch together
+                if lc is None:
+                    self.tpf = tpf
+                    self.aperture_mask = aperture_mask
+                    lc = new_lc
+                    raw_lc = new_raw_lc
+                else:
+                    lc = lc.append(new_lc)
+                    raw_lc = raw_lc.append(new_raw_lc)
+
+                self.breakpoints.append(new_lc.time[-1])
+                self.used_sectors.append(tpf.sector)
+                self.lcc.append(new_lc)
+            except:
+                continue
+
+        self.lc = lc
+        self.raw_lc = raw_lc
+        self.link_mask = np.concatenate(self.link_mask)
+
+        return lc
+
+    
     def from_local_data(self, local_data_path, sectors=None, flatten=False, zero_point_background=False, n_pca=5):
         """
-        Retrieve data from local data cube.
+        Retrieve data from local data cube on Vanir.
         Data cubes should be stored in the format 's0001-1-1.fits'
 
         Parameters
@@ -211,6 +314,7 @@ class Target(object):
         lc : `lightkurve.LightCurve` object
             background-corrected flux time series
         """
+        from astrocut import CutoutFactory
 
         self.get_target_info(self.ticid)
 
@@ -310,6 +414,10 @@ class Target(object):
                 aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
                 aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
                               round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
+        elif aperture_mask == 'center':
+            aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
+            aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
+                          round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
 
         # create raw light curve            
         raw_lc = tpf.to_lightcurve(aperture_mask=aperture_mask)
@@ -379,7 +487,7 @@ class Target(object):
 
         return corrected_lc
     
-    def fetch_and_clean_data(self, lc_source='lightkurve', sectors=None, flatten=True, zero_point_background=True, n_pca=5, **kwargs):
+    def fetch_and_clean_data(self, lc_source='lightkurve', sectors=None, aperture_mask=None, flatten=True, zero_point_background=True, n_pca=5, **kwargs):
         """
         Query and download data, remove background signal and outliers. The light curve is stored as a
         object variable `Target.lc`.
@@ -404,10 +512,13 @@ class Target(object):
         """
        
         if lc_source == 'lightkurve':
-            lc = self.from_lightkurve(sectors=sectors, flatten=flatten, zero_point_background=zero_point_background, n_pca=n_pca)
+            lc = self.from_lightkurve(sectors=sectors, flatten=flatten, aperture_mask=aperture_mask, zero_point_background=zero_point_background, n_pca=n_pca)
 
         elif lc_source == 'local':
             lc = self.from_local_data('/data/users/nsaunders/cubes')
+
+        elif lc_source == 'mendel':
+            lc = self.from_local_data_mendel(sectors=None, aperture_mask=None, flatten=True, n_pca=5)
 
         lc = self._clean_data(lc)
 
