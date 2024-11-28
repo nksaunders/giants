@@ -160,7 +160,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # save the transit stats
     with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
-                file.write(f"{ticid} {depth:.5f} {depth_snr:.5f} {period.value:.5f} {t0:.5f} {dur:.5f} {scaled_residuals:.5f} {harmonic_del:.5f} {max_power:.5f}\n")
+                file.write(f"{ticid} {depth:.5f} {depth_snr:.5f} {period.value:.5f} {t0.value:.5f} {dur:.5f} {scaled_residuals:.5f} {harmonic_del:.5f} {max_power:.5f}\n")
 
     print('2')
 
