@@ -122,6 +122,8 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         except:
             target.lc = target.lc
 
+    print('0')
+
     freq, fts = calculate_fft(lc)
 
     # save the data
@@ -141,6 +143,8 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     depth_snr = depth / np.std(lc.flux.value)
     dur = bls_stats['duration'].value * 24.
 
+    print('1')
+
     harmonic_del = bls_stats['harmonic_delta_log_likelihood'].value
     sde = (bls_results.power - np.mean(bls_results.power)) / np.std(bls_results.power)
     max_power = max(sde)
@@ -156,7 +160,9 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # save the transit stats
     with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
-                file.write(f"{ticid} {depth} {depth_snr} {period.value} {t0} {dur} {scaled_residuals} {harmonic_del} {max_power}\n")
+                file.write(f"{ticid} {depth:.5f} {depth_snr:.5f} {period.value:.5f} {t0:.5f} {dur:.5f} {scaled_residuals:.5f} {harmonic_del:.5f} {max_power:.5f}\n")
+
+    print('2')
 
     """Create the figure."""
     dims = (27, 36)
@@ -197,6 +203,8 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         param_string, rstar = stellar_params(ticid)
     ax_top.annotate(param_string, size=20, xy=(0.5, 0.65), xycoords='axes fraction', ha='center', va='center')
 
+    print('3')
+
     # plot the raw light curve
     ax = plt.subplot2grid(dims, (1, 0), colspan=dims[1], rowspan=4)
     ax.axis('off')
@@ -227,6 +235,8 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     ax = plt.subplot2grid(dims, (18,0), colspan=12, rowspan=6)
     plot_tr_top(lc, model_lc, period.value, t0.value, depth, ax)
 
+    print('4')
+
     # plot the residuals
     ax = plt.subplot2grid(dims, (24,0), colspan=12, rowspan=3)
     plot_tr_bottom(lc, model_lc, period.value, t0.value, depth, ax)
@@ -242,14 +252,20 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     plot_fft(freq, fts, ax)
     plt.subplots_adjust(hspace=0)
 
+    print('5')
+
     # plot the difference image
     ax = plt.subplot2grid(dims, (18, 25), colspan=11, rowspan=9)
     plot_diff_image(tpf, lcc, period.value, t0.value, dur, ax)
+
+    print('6')
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
     # fig.set_size_inches([d-1 for d in dims[::-1]])
     fig.set_size_inches([33, 25.5])
+
+    print('7')
 
     if save_fig:
         try:
