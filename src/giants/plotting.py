@@ -127,11 +127,11 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     # save the data
     if save_data:
         try:
-            np.savetxt(outdir+'/timeseries/'+str(ticid)+'.dat.ts', np.transpose([lc.time.value, lc.flux.value]), fmt='%.8f', delimiter=' ')
-            np.savetxt(outdir+'/fft/'+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
+            np.savetxt(os.path.join(outdir,'/timeseries/'+str(ticid)+'.dat.ts'), np.transpose([lc.time.value, lc.flux.value]), fmt='%.8f', delimiter=' ')
+            np.savetxt(os.path.join(outdir,'/fft/'+str(ticid)+'.dat.ts.fft'), np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
         except:
-            np.savetxt(outdir+str(ticid)+'.dat.ts', np.transpose([lc.time.value, lc.flux.value]), fmt='%.8f', delimiter=' ')
-            np.savetxt(outdir+str(ticid)+'.dat.ts.fft', np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
+            np.savetxt(os.path.join(outdir,str(ticid)+'.dat.ts'), np.transpose([lc.time.value, lc.flux.value]), fmt='%.8f', delimiter=' ')
+            np.savetxt(os.path.join(outdir,str(ticid)+'.dat.ts.fft'), np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
 
     # fit BLS
     bls_results, bls_stats, bls_model = get_bls_results(lc)
@@ -253,9 +253,9 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     if save_fig:
         try:
-            fig.savefig(str(outdir)+'/plots/'+str(ticid)+'_summary.png', bbox_inches='tight')
+            fig.savefig(os.path.join(outdir,'/plots/'+str(ticid)+'_summary.png'), bbox_inches='tight')
         except:
-            fig.savefig(str(outdir)+str(ticid)+'_summary.png', bbox_inches='tight')
+            fig.savefig(os.path.join(outdir, str(ticid)+'_summary.png'), bbox_inches='tight')
 
 def fit_transit_model(lc, period, t0):
     """
