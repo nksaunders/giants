@@ -221,7 +221,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # plot the TPF
     ax = plt.subplot2grid(dims, (7,25), colspan=11, rowspan=9)
-    plot_tpf(tpf, ticid, aperture_mask, ax)
+    plot_tpf(tpf, target.coords, ticid, aperture_mask, ax)
 
     # plot the transit model
     ax = plt.subplot2grid(dims, (18,0), colspan=12, rowspan=6)
@@ -903,7 +903,7 @@ def plot_vetting_summary(target, outdir='', period=None, t0=None, save_fig=True,
     Plot dithered apertures
     """
     ax = plt.subplot2grid(dims, (1, dither_tpf_col), colspan=5, rowspan=5)
-    plot_tpf(tpf, target.coords, ticid, aperture_mask_center, ax, show_colorbar=False, show_gaia_overlay=False)
+    plot_tpf(tpf, ticid, aperture_mask_center, ax, show_colorbar=False, show_gaia_overlay=False)
     ax.set_title('')
     ax.set_xlabel('')
     ax.set_ylabel('')
