@@ -242,12 +242,16 @@ class Target(object):
             fits_image_paths = glob.glob(os.path.join(ffi_path, f's{sector:04}/*/*/{cam}-{ccd}/*.fits'))
             fits_image_paths.sort()
 
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                tpf = lk.TessTargetPixelFile.from_fits_images(fits_image_paths, position=self.coords, size=(11, 11), 
-                                                              target_id=f'TIC {self.ticid}', hdu0_keywords={'sector':sector})
-            tpf.targetid = f'TIC {self.ticid}'
-            tpfs.append(tpf)
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    tpf = lk.TessTargetPixelFile.from_fits_images(fits_image_paths, position=self.coords, size=(11, 11), 
+                                                                target_id=f'TIC {self.ticid}', hdu0_keywords={'sector':sector})
+                tpf.targetid = f'TIC {self.ticid}'
+                tpfs.append(tpf)
+
+            except:
+                continue
 
         tpfc = lk.TargetPixelFileCollection(tpfs)
 
