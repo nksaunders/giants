@@ -127,8 +127,8 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     # save the data
     if save_data:
         try:
-            np.savetxt(os.path.join(outdir,'/timeseries/'+str(ticid)+'.dat.ts'), np.transpose([lc.time.value, lc.flux.value]), fmt='%.8f', delimiter=' ')
-            np.savetxt(os.path.join(outdir,'/fft/'+str(ticid)+'.dat.ts.fft'), np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
+            np.savetxt(os.path.join(outdir,'timeseries/'+str(ticid)+'.dat.ts'), np.transpose([lc.time.value, lc.flux.value]), fmt='%.8f', delimiter=' ')
+            np.savetxt(os.path.join(outdir,'fft/'+str(ticid)+'.dat.ts.fft'), np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
         except:
             np.savetxt(os.path.join(outdir,str(ticid)+'.dat.ts'), np.transpose([lc.time.value, lc.flux.value]), fmt='%.8f', delimiter=' ')
             np.savetxt(os.path.join(outdir,str(ticid)+'.dat.ts.fft'), np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
@@ -253,7 +253,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     if save_fig:
         try:
-            fig.savefig(os.path.join(outdir,'/plots/'+str(ticid)+'_summary.png'), bbox_inches='tight')
+            fig.savefig(os.path.join(outdir,'plots/'+str(ticid)+'_summary.png'), bbox_inches='tight')
         except:
             fig.savefig(os.path.join(outdir, str(ticid)+'_summary.png'), bbox_inches='tight')
 
@@ -645,30 +645,30 @@ def plot_diff_image(tpf, lcc, per, t0, dur, ax):
     transit_times = t0 + np.arange(n_transits) * per
 
     resid_frames = []
-    # try:
-    for tt in transit_times[transit_times < tpf.time.value[-1]]:
-        try:
-            t_frames = np.where([np.min(np.abs(tt - t)) < (dur/2)/24. for t in tpf.time.value])
-            nt_frames = np.where([np.min(np.abs(tt + (dur/24.) - t)) < (dur/2)/24. for t in tpf.time.value])
-            rf = np.nanmean(tpf.flux.value[t_frames], axis=0) - np.nanmean(tpf.flux.value[nt_frames], axis=0)
-            if np.nansum(rf) == 0:
+    try:
+        for tt in transit_times[transit_times < tpf.time.value[-1]]:
+            try:
+                t_frames = np.where([np.min(np.abs(tt - t)) < (dur/2)/24. for t in tpf.time.value])
+                nt_frames = np.where([np.min(np.abs(tt + (dur/24.) - t)) < (dur/2)/24. for t in tpf.time.value])
+                rf = np.nanmean(tpf.flux.value[t_frames], axis=0) - np.nanmean(tpf.flux.value[nt_frames], axis=0)
+                if np.nansum(rf) == 0:
+                    continue
+                else:
+                    resid_frames.append(rf)
+            except:
                 continue
-            else:
-                resid_frames.append(rf)
-        except:
-            continue
 
-    residual = np.nanmedian(resid_frames, axis=0)
-    mappable = plt.imshow(residual)
-    plt.xlim(-.5, 10.5)
-    plt.ylim(-.5, 10.5)
-    plt.colorbar(mappable, label='Residual Counts')
-    ax.set_title('(In - Out) Transit')
-    # except:
-    #     tpf.plot(frame=100, ax=ax)
-    #     ax.annotate('Difference Image Failed', xy=(0.5, 0.1), xycoords='axes fraction', 
-    #                 fontsize=28, ha='center', va='center', backgroundcolor='w', 
-    #                 bbox=dict(facecolor='w', alpha=0.75, edgecolor='black'))
+        residual = np.nanmedian(resid_frames, axis=0)
+        mappable = plt.imshow(residual)
+        plt.xlim(-.5, 10.5)
+        plt.ylim(-.5, 10.5)
+        plt.colorbar(mappable, label='Residual Counts')
+        ax.set_title('(In - Out) Transit')
+    except:
+        tpf.plot(frame=100, ax=ax)
+        ax.annotate('Difference Image Failed', xy=(0.5, 0.1), xycoords='axes fraction', 
+                    fontsize=28, ha='center', va='center', backgroundcolor='w', 
+                    bbox=dict(facecolor='w', alpha=0.75, edgecolor='black'))
 
     plt.set_cmap('gray')
     ax.set_xticks([])
