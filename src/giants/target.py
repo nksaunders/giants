@@ -1,6 +1,7 @@
 import os
 import re
 import glob
+import pathlib
 import numpy as np
 import pandas as pd
 import scipy
@@ -227,6 +228,7 @@ class Target(object):
         lc : `lightkurve.LightCurve` object
             background-corrected flux time series
         """
+        import astrocut
 
         if sectors is None:
             sectors = self.available_sectors
@@ -243,11 +245,22 @@ class Target(object):
             fits_image_paths.sort()
 
             try:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    tpf = lk.TessTargetPixelFile.from_fits_images(fits_image_paths, position=self.coords, size=(11, 11), 
-                                                                target_id=f'TIC {self.ticid}', hdu0_keywords={'sector':sector})
-                tpf.targetid = f'TIC {self.ticid}'
+                # with warnings.catch_warnings():
+                #     warnings.simplefilter("ignore")
+                #     tpf = lk.TessTargetPixelFile.from_fits_images(fits_image_paths, position=self.coords, size=(11, 11), 
+                #                                                 target_id=f'TIC {self.ticid}', hdu0_keywords={'sector':sector})
+                # tpf.targetid = f'TIC {self.ticid}'
+
+                my_cutter = astrocut.CutoutFactory()
+
+                out_path = f'/home/nsaunders/mendel-nas1/cutout_files/tic{self.ticid}'
+                cutout_file = my_cutter.cube_cut(f's3://stpubdata/tess/public/mast/tess-s{sector:04}-{cam}-{ccd}-cube.fits', 
+                                                 self.coords, 11, output_path=out_path)
+
+                tpf = lk.read(cutout_file, targetid=f'TIC {self.ticid}')
+
+                file_to_remove = pathlib.Path(cutout_file)
+                file_to_remove.unlink()
                 tpfs.append(tpf)
 
             except:
