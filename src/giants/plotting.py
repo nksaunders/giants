@@ -478,7 +478,7 @@ def get_bls_results(lc):
     lc = lc[link_mask]
 
     model = BoxLeastSquares(lc.time, lc.flux)
-    results = model.power(np.linspace(1., 25., 7000), np.linspace(.1, .5, 1000))
+    results = model.power(np.linspace(2., 30., 5000), np.linspace(.1, 1., 1000))
 
     stats = model.compute_stats(results.period[np.argmax(results.power)], 
                                 results.duration[np.argmax(results.power)], 

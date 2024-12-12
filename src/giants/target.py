@@ -11,6 +11,7 @@ import astropy.units as u
 from tess_stars2px import tess_stars2px_function_entry
 from astroquery.mast import Catalogs
 from astropy.coordinates import SkyCoord
+from astropy.config import set_temp_cache
 
 from . import PACKAGEDIR
 from .plotting import plot_summary
@@ -72,13 +73,16 @@ class Target(object):
         ticid : int
             TIC ID of the target
         """
-        catalog_data = Catalogs.query_criteria(objectname=f'TIC {ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
+        with set_temp_cache('/home/nsaunders/mendel-nas1/temp_cache', delete=True):
+            catalog_data = Catalogs.query_criteria(objectname=f'TIC {ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
         
         self.ra = catalog_data['ra'][0]
         self.dec = catalog_data['dec'][0]
-        self.coords = SkyCoord(ra=self.ra, dec=self.dec, unit=(u.deg, u.deg))
+        self.coords = SkyCoord(ra=self.ra, dec=self.dec, frame='icrs', unit=(u.deg, u.deg))
         self.rstar = catalog_data['rad'][0]
         self.teff = catalog_data['Teff'][0]
+        self.logg = catalog_data['logg'][0]
+        self.vmag = catalog_data['Vmag'][0]
 
         self.has_target_info = True
 
@@ -245,12 +249,6 @@ class Target(object):
             fits_image_paths.sort()
 
             try:
-                # with warnings.catch_warnings():
-                #     warnings.simplefilter("ignore")
-                #     tpf = lk.TessTargetPixelFile.from_fits_images(fits_image_paths, position=self.coords, size=(11, 11), 
-                #                                                 target_id=f'TIC {self.ticid}', hdu0_keywords={'sector':sector})
-                # tpf.targetid = f'TIC {self.ticid}'
-
                 my_cutter = astrocut.CutoutFactory()
 
                 out_path = f'/home/nsaunders/mendel-nas1/cutout_files/tic{self.ticid}'
@@ -472,8 +470,8 @@ class Target(object):
         except:
             link_mask = link_mask
 
-        # # drop False indicies from tpf
-        # tpf = tpf[link_mask]
+        # drop False indicies from tpf
+        tpf = tpf[link_mask]
 
         # create design matrix from pixels outside of aperture
         regressors = tpf.flux[:, ~aperture_mask]
