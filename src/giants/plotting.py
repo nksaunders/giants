@@ -8,6 +8,7 @@ import lightkurve as lk
 import astropy.units as u
 import pickle
 from astroquery.mast import Catalogs
+from astropy.config import set_temp_cache
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 try:
@@ -630,7 +631,8 @@ def plot_tpf(tpf, coords, ticid, aperture_mask, ax, show_colorbar=True, show_gai
                          aperture_mask=aperture_mask, mask_color=mask_color,
                          title=f'TIC {ticid}, cadence {fnumber}')
     if show_gaia_overlay:
-        ax = add_gaia_figure_elements(tpf, coords, ax)
+        with set_temp_cache('/home/nsaunders/mendel-nas1/temp_cache', delete=True):
+            ax = add_gaia_figure_elements(tpf, coords, ax)
     else:
         plt.xlim([tpf.column+0.5, tpf.column+tpf.shape[1]-0.5])
         plt.ylim([tpf.row+0.5, tpf.row+tpf.shape[2]-0.5])
