@@ -73,8 +73,8 @@ class Target(object):
         ticid : int
             TIC ID of the target
         """
-        with set_temp_cache(f'/home/nsaunders/mendel-nas1/temp_cache/tic{ticid}_cache', delete=True):
-            catalog_data = Catalogs.query_criteria(objectname=f'TIC {ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
+        # with set_temp_cache(f'/home/nsaunders/mendel-nas1/temp_cache/tic{ticid}_cache', delete=True):
+        catalog_data = Catalogs.query_criteria(objectname=f'TIC {ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
         
         self.ra = catalog_data['ra'][0]
         self.dec = catalog_data['dec'][0]
