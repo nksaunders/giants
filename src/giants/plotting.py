@@ -117,12 +117,6 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         aperture_mask = target.aperture_mask
         sectors = target.used_sectors
 
-        mask = target.link_mask[~target.mask]
-        try:
-            target.lc = target.lc[mask] # PHT HACK
-        except:
-            target.lc = target.lc
-
     freq, fts = calculate_fft(lc)
 
     # save the data
