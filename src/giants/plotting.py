@@ -809,12 +809,6 @@ def plot_vetting_summary(target, outdir='', period=None, t0=None, save_fig=True,
     aperture_mask = target.aperture_mask
     sectors = target.used_sectors
 
-    mask = target.link_mask[~target.mask]
-    try:
-        target.lc = target.lc[mask] # PHT HACK
-    except:
-        target.lc = target.lc
-
     if period is None:
         bls_results, bls_stats = get_bls_results(lc)
         period = bls_results.period[np.argmax(bls_results.power)].value
