@@ -443,17 +443,9 @@ class Target(object):
             aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
                           round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
 
-        # create raw light curve            
-        raw_lc = tpf.to_lightcurve(aperture_mask=aperture_mask)
-
-        # remove NaNs and negative flux values
-        mask = (raw_lc.flux_err > 0) | (~np.isnan(raw_lc.flux))
-        raw_lc = raw_lc[mask]
-        tpf = tpf[mask]
-
         # create boolean mask for tpf
         link_mask = np.ones_like(tpf.time.value, dtype=bool)
-
+        
         # add the first 24 and last 12 hours of data to mask
         try:
             link_mask[tpf.time.value < tpf.time.value[0] + 1.0] = False
@@ -472,7 +464,14 @@ class Target(object):
 
         # drop False indicies from tpf
         tpf = tpf[link_mask]
-        raw_lc = raw_lc[link_mask]
+
+        # create raw light curve            
+        raw_lc = tpf.to_lightcurve(aperture_mask=aperture_mask)
+
+        # remove NaNs and negative flux values
+        mask = (raw_lc.flux_err > 0) | (~np.isnan(raw_lc.flux))
+        raw_lc = raw_lc[mask]
+        tpf = tpf[mask]
 
         # create design matrix from pixels outside of aperture
         regressors = tpf.flux[:, ~aperture_mask]
