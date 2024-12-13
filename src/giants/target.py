@@ -472,6 +472,7 @@ class Target(object):
 
         # drop False indicies from tpf
         tpf = tpf[link_mask]
+        raw_lc = raw_lc[link_mask]
 
         # create design matrix from pixels outside of aperture
         regressors = tpf.flux[:, ~aperture_mask]
