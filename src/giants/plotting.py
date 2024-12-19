@@ -799,8 +799,8 @@ def calc_in_out_rms(lc, period, t0, dur):
     """
     tmask = lc.remove_nans().create_transit_mask(period, t0, dur)
 
-    in_rms = np.sqrt(np.nanmean(lc.remove_nans()[tmask].flux.value)**2)
-    out_rms = np.sqrt(np.nanmean(lc.remove_nans()[~tmask].flux.value)**2)
+    in_rms = np.abs(np.sqrt(np.nanmean(lc.remove_nans()[tmask].flux.value+1.)**2) - 1.)
+    out_rms = np.abs(np.sqrt(np.nanmean(lc.remove_nans()[~tmask].flux.value+1.)**2) - 1.)
 
     return in_rms, out_rms
 
