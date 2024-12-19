@@ -150,7 +150,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         scaled_residuals = np.nan
 
     try:
-        in_rms, out_rms = calc_in_out_rms(lc, period, t0, dur)
+        in_rms, out_rms = calc_in_out_rms(lc, period, t0, dur / 24.)
     except:
         in_rms, out_rms = np.nan, np.nan
 
@@ -799,8 +799,8 @@ def calc_in_out_rms(lc, period, t0, dur):
     """
     tmask = lc.remove_nans().create_transit_mask(period, t0, dur)
 
-    in_rms = np.abs(np.sqrt(np.nanmean(lc.remove_nans()[tmask].flux.value+1.)**2) - 1.)
-    out_rms = np.abs(np.sqrt(np.nanmean(lc.remove_nans()[~tmask].flux.value+1.)**2) - 1.)
+    in_rms = np.sqrt(np.nanmean(lc.remove_nans()[tmask].flux.value)**2)
+    out_rms = np.sqrt(np.nanmean(lc.remove_nans()[~tmask].flux.value)**2)
 
     return in_rms, out_rms
 
