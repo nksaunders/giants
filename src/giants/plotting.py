@@ -149,9 +149,14 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         model_lc = None
         scaled_residuals = np.nan
 
+    try:
+        in_rms, out_rms = calc_in_out_rms(lc, period, t0, dur)
+    except:
+        in_rms, out_rms = np.nan, np.nan
+
     # save the transit stats
     with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
-                file.write(f"{ticid} {depth:.5f} {depth_snr:.5f} {period.value:.5f} {t0.value:.5f} {dur:.5f} {scaled_residuals:.5f} {harmonic_del:.5f} {max_power:.5f}\n")
+        file.write(f"{ticid} {depth:.5f} {depth_snr:.5f} {period.value:.5f} {t0.value:.5f} {dur:.5f} {scaled_residuals:.5f} {harmonic_del:.5f} {max_power:.5f} {in_rms:.5f} {out_rms:.5f}\n")
 
     """Create the figure."""
     dims = (27, 36)
@@ -776,6 +781,28 @@ def stellar_params(ticid):
     param_string = rf'(RA, dec)={coords}, $R_\bigstar$={rstar} $R_\odot$, logg={logg}, {teffstring}={teff} K, V={float(V):.2f}'
 
     return param_string, rstar_val
+
+def calc_in_out_rms(lc, period, t0, dur):
+    """
+    Calculate the RMS of the in-transit and out-of-transit data.
+
+    Parameters
+    ----------
+    lc : lightkurve.LightCurve
+        Light curve to fit.
+    period : float
+        Orbital period of the planet.
+    t0 : float
+        Epoch of the first transit.
+    dur : float
+        Duration of the transit.
+    """
+    tmask = lc.remove_nans().create_transit_mask(period, t0, dur)
+
+    in_rms = np.sqrt(np.mean(lc.remove_nans()[tmask].flux.value)**2)
+    out_rms = np.sqrt(np.mean(lc.remove_nans()[~tmask].flux.value)**2)
+
+    return in_rms, out_rms
 
 def plot_vetting_summary(target, outdir='', period=None, t0=None, save_fig=True, quick=True):
     """
