@@ -52,6 +52,7 @@ class Target(object):
             self.dec = target_info['dec']
             self.coords = SkyCoord(ra=self.ra, dec=self.dec, frame='icrs', unit=(u.deg, u.deg))
             self.rstar = target_info['rstar']
+            self.mstar = target_info['mstar']
             self.teff = target_info['teff']
             self.logg = target_info['logg']
             self.vmag = target_info['vmag']

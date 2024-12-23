@@ -180,6 +180,10 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
             rstar_string = '?'
             rstar = np.nan
         try:
+            mstar_string = f'{target.mstar:.2f}'
+        except:
+            mstar_string = '?'
+        try:
             teff_string = f'{target.teff:.0f}'
         except:
             teff_string = '?'
@@ -192,7 +196,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         except:
             V_string = '?'
         tefflabel = r'T$_{\rm eff}$'
-        param_string = rf'(RA, dec)={coord_string}, $R_\bigstar$={rstar_string} $R_\odot$, logg={logg_string}, {tefflabel}={teff_string} K, V={V_string}'
+        param_string = rf'(RA, dec)={coord_string}, $R_\bigstar$={rstar_string} $R_\odot$, $M_\bigstar$={mstar_string} $M_\odot$, logg={logg_string}, {tefflabel}={teff_string} K, V={V_string}'
     else:
         param_string, rstar = stellar_params(ticid)
     ax_top.annotate(param_string, size=20, xy=(0.5, 0.65), xycoords='axes fraction', ha='center', va='center')
@@ -761,11 +765,16 @@ def stellar_params(ticid):
     dec = catalog_data['dec'][0]
     coords = f'({ra:.2f}, {dec:.2f})'
     rstar_val = catalog_data['rad'][0]
+    mstar_val = catalog_data['mass'][0]
     teff = catalog_data['Teff'][0]
     if np.isnan(rstar_val):
         rstar = '?'
     else:
         rstar = f'{rstar_val:.2f}'
+    if np.isnan(mstar_val):
+        mstar = '?'
+    else:
+        mstar = f'{mstar_val:.2f}'
     if np.isnan(teff):
         teff = '?'
     else:
@@ -778,7 +787,7 @@ def stellar_params(ticid):
     V = catalog_data['Vmag'][0]
 
     teffstring = r'T$_{\rm eff}$'
-    param_string = rf'(RA, dec)={coords}, $R_\bigstar$={rstar} $R_\odot$, logg={logg}, {teffstring}={teff} K, V={float(V):.2f}'
+    param_string = rf'(RA, dec)={coords}, $R_\bigstar$={rstar} $R_\odot$, $M_\bigstar$={mstar} $M_\odot$, logg={logg}, {teffstring}={teff} K, V={float(V):.2f}'
 
     return param_string, rstar_val
 
