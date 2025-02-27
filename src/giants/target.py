@@ -74,7 +74,6 @@ class Target(object):
         ticid : int
             TIC ID of the target
         """
-        # with set_temp_cache(f'/home/nsaunders/mendel-nas1/temp_cache/tic{ticid}_cache', delete=True):
         catalog_data = Catalogs.query_criteria(objectname=f'TIC {ticid}', catalog="Tic", radius=.0001, Bmag=[0,20])
         
         self.ra = catalog_data['ra'][0]
@@ -209,9 +208,9 @@ class Target(object):
 
         return lc
     
-    def from_local_data_mendel(self, sectors=None, aperture_mask='center', flatten=False, n_pca=5, **kwargs):
+    def from_cloud_data(self, sectors=None, aperture_mask='center', flatten=False, n_pca=5, out_path=None, **kwargs):
         """
-        Retrieve data from local FFI data on Mendel.
+        Retrieve FFI data from MAST cloud storage.
 
         Parameters
         ----------
@@ -239,9 +238,11 @@ class Target(object):
             try:
                 my_cutter = astrocut.CutoutFactory()
 
-                out_path = f'/home/nsaunders/mendel-nas1/cutout_files/tic{self.ticid}'
+                if out_path is None:
+                    out_path = f'/home/nsaunders/mendel-nas1/cutout_files/tic{self.ticid}'
+                cutout_path = os.path.join(out_path, f'tic{self.ticid}')
                 cutout_file = my_cutter.cube_cut(f's3://stpubdata/tess/public/mast/tess-s{sector:04}-{cam}-{ccd}-cube.fits', 
-                                                 self.coords, 11, output_path=out_path)
+                                                 self.coords, 11, output_path=cutout_path)
 
                 tpf = lk.read(cutout_file, targetid=f'TIC {self.ticid}')
 
@@ -506,7 +507,7 @@ class Target(object):
 
         Parameters
         ----------
-        lc_source : str, 'lightkurve' or 'local'
+        lc_source : str, 'lightkurve' or 'cloud'
             pipeline used to access data
         flatten : bool
             optionally flatten the light curve
@@ -526,11 +527,8 @@ class Target(object):
         if lc_source == 'lightkurve':
             lc = self.from_lightkurve(sectors=sectors, flatten=flatten, aperture_mask=aperture_mask, zero_point_background=zero_point_background, n_pca=n_pca)
 
-        elif lc_source == 'local':
-            lc = self.from_local_data('/data/users/nsaunders/cubes')
-
-        elif lc_source == 'mendel':
-            lc = self.from_local_data_mendel(sectors=sectors, aperture_mask=aperture_mask, flatten=flatten, n_pca=5)
+        elif lc_source == 'cloud':
+            lc = self.from_cloud_data(sectors=sectors, aperture_mask=aperture_mask, flatten=flatten, n_pca=5)
 
         lc = self._clean_data(lc)
 
