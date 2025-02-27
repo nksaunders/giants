@@ -240,14 +240,9 @@ class Target(object):
 
         tpfs = []
 
-        ffi_path = '/shared_data/osn/astro-tessdata/ffi/'
-
         for i, sector in enumerate(sectors):
             cam = self.cameras[i]
             ccd = self.ccds[i]
-
-            fits_image_paths = glob.glob(os.path.join(ffi_path, f's{sector:04}/*/*/{cam}-{ccd}/*.fits'))
-            fits_image_paths.sort()
 
             try:
                 my_cutter = astrocut.CutoutFactory()

@@ -100,7 +100,11 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     font = {'family' : 'sans',
         'size'   : 14}
     matplotlib.rc('font', **font)
-    plt.style.use('seaborn-muted')
+    try:
+        plt.style.use('seaborn-muted')
+    except:
+        plt.style.use('seaborn-v0_8-muted')
+
 
     if custom_lc is not None:
         lc = custom_lc
