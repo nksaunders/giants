@@ -834,7 +834,10 @@ def plot_vetting_summary(target, outdir='', period=None, t0=None, save_fig=True,
     font = {'family' : 'sans',
         'size'   : 14}
     matplotlib.rc('font', **font)
-    plt.style.use('seaborn-muted')
+    try:
+        plt.style.use('seaborn-muted')
+    except:
+        plt.style.use('seaborn-v0_8-muted')
 
     lc = target.lc
     lcc = target.lcc
