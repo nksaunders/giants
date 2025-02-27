@@ -149,14 +149,6 @@ class Target(object):
             search_result_mask = np.ones(len(self.available_sectors), dtype=bool)
             masked_search_result = self.search_result
         
-        # HACK for PHT
-        # search_result_mask = np.ones(len(self.available_sectors), dtype=bool)
-        # for sector in self.available_sectors:
-        #     if sector >= 27 and sector < 56:
-        #         search_result_mask.append(True)
-        #     else:
-        #         search_result_mask.append(False)
-
         masked_search_result = self.search_result[search_result_mask]
 
         # download data
@@ -186,7 +178,7 @@ class Target(object):
                     aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
                     aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
                                   round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
-            elif aperture_mask == 'center':
+            elif isinstance(aperture_mask, str) and aperture_mask.lower() == 'center':
                 aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
                 aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
                               round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
@@ -282,14 +274,14 @@ class Target(object):
                 if np.sum(aperture_mask) == 0:
                     aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
                     aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
-                                round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
-            elif aperture_mask == 'center':
+                                  round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
+            elif isinstance(aperture_mask, str) and aperture_mask.lower() == 'center':
                 aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
                 aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
                               round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
             try:
                 new_lc = self.apply_pca_corrector(tpf, flatten=flatten, zero_point_background=True, 
-                                                    aperture_mask=aperture_mask, n_pca=n_pca, pipeline_call=True)
+                                                  aperture_mask=aperture_mask, n_pca=n_pca, pipeline_call=True)
                 new_raw_lc = tpf.to_lightcurve(aperture_mask=aperture_mask)
 
                 # stitch together
@@ -434,7 +426,7 @@ class Target(object):
                 aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
                 aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
                               round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
-        elif aperture_mask == 'center':
+        elif isinstance(aperture_mask, str) and aperture_mask.lower() == 'center':
             aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
             aperture_mask[round(tpf.shape[1]/2)-2:round(tpf.shape[1]/2)+1, \
                           round(tpf.shape[2]/2)-2:round(tpf.shape[2]/2)+1] = True
