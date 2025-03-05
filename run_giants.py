@@ -1,5 +1,4 @@
 import os
-import sys
 import argparse
 
 from giants.plotting import plot_summary
