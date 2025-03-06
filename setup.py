@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-import os
-import sys
+
 try:
     from setuptools import setup
 except ImportError:
@@ -12,8 +11,8 @@ with open('requirements.txt') as f:
 setup(name='giants',
       version='0.0.1',
       description="",
-      author='Samuel Grunblatt, Nicholas Saunders',
-      license='',
+      author='Nicholas Saunders, Samuel Grunblatt',
+      license='MIT',
       packages=['giants'],
       package_dir={'': 'src'},
       package_data={'giants': ['data/downlinks.txt']},
