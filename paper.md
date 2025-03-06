@@ -35,7 +35,7 @@ bibliography: paper.bib
 
 # Summary
 
-When a planet orbiting a star outside of our solar system (known as an exoplanet) passes in front of its host star along our line of sight, it occults a fraction of the stellar light. This phenomenon is known as a transit. The *Transiting Exoplanet Survey Satellite* (TESS) is a NASA mission currently performing a nearly all-sky survey to search for transiting exoplanets [@ricker2018], which has already resulted in over 7,000 planet candidates and 600 confirmed planets [@nexsci]. TESS observes the majority of stars in large 24x90 degree rectangular regions of the sky known as Full-Frame Images (FFIs). These FFIs were observed at a 30-minute cadence for the TESS prime mission, 10-minute cadence for the first extended mission, and 200-second cadence in the second extended mission. We present the `giants` pipeline, a Python package to analyze TESS FFI observations to search for planets transiting evolved (subgiant and red giant) stars.
+When a planet orbiting a star outside of our solar system (known as an exoplanet) passes in front of its host star along our line of sight, it occults a fraction of the stellar light. This phenomenon is known as a transit. The *Transiting Exoplanet Survey Satellite* (TESS) is a NASA mission currently performing a nearly all-sky survey to search for transiting exoplanets [@ricker2015], which has already resulted in over 7,000 planet candidates and 600 confirmed planets[^1]. TESS observes the majority of stars in large 24x90 degree rectangular regions of the sky known as Full-Frame Images (FFIs). These FFIs were observed at a 30-minute cadence for the TESS prime mission, 10-minute cadence for the first extended mission, and 200-second cadence in the second extended mission. We present the `giants` pipeline, a Python package to analyze TESS FFI observations to search for planets transiting evolved (subgiant and red giant) stars.
 
 # Statement of Need
 
@@ -45,12 +45,15 @@ Multiple large-scale transit-search efforts exist to identify new transiting pla
 
 # Data Access
 
-The `giants` pipeline uses TESS FFI data stored on the Mikulski Archive for Space Telescopes (MAST; [@mast]). There are two primary methods for accessing these data: using the `TESSCut` implementation in the `lightkurve` Python package, or accessing the data directly on the MAST-hosted cloud storage.
+The `giants` pipeline uses TESS FFI data stored on the Mikulski Archive for Space Telescopes (MAST; [@mast]). There are two primary methods for downloading these data: accessing the data directly on the MAST-hosted cloud storage, or using the `TESSCut` [@brasseur2019] implementation in the `lightkurve` Python package.
+
+## Cloud Data
+
+The MAST archive hosts image cubes containing TESS FFI observations on a publicly accessible s3 cloud server. This is the default and recommended method. 
 
 ## `TESSCut`
 
-
-## Cloud Data
+To download FFI observations with `TESSCut`, a user may call the `giants.Target` method `from_lightkurve`. This will use the `lightkurve.search_tesscut` function, which queries available observations and downloads TESS FFI pixel cutouts with the Python implementation of the `TESSCut` tool[^2]. 
 
 # Noise Removal
 
@@ -61,3 +64,9 @@ We utilize the `RegressionCorrector` module of the Lightkurve
 # Acknowledgements
 
 # References
+
+[^1]: Retrieved from the NASA Exoplanet Science Institute (NexScI; DOI:10.26133/NEA12) on 05 March 2025.
+
+[^2]: https://mast.stsci.edu/tesscut/
+
+[^3]: https://github.com/spacetelescope/astrocut

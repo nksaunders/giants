@@ -6,3 +6,4 @@ astroquery
 pandas
 astropy
 tess-point
+astrocut
