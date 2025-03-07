@@ -22,7 +22,6 @@ authors:
 affiliations:
  - name: Institute for Astronomy, University of Hawaiʻi at M\=anoa, 2680 Woodlawn Drive, Honolulu, HI 96822, USA
    index: 1
-   ror: 00hx57361
  - name: Department of Physics and Astronomy, The University of Alabama, 514 University Blvd., Tuscaloosa, AL 35487, USA
    index: 2
  - name: Department of Physics, Lehigh University, 16 Memorial Drive East, Bethlehem, PA 18015, USA
