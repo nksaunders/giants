@@ -69,7 +69,7 @@ class Target(object):
         else:
             self.get_target_info(self.ticid)
 
-            self.available_sectors, self.cameras, self.ccds = self.fetch_obs(self.ra, self.dec)
+        self.available_sectors, self.cameras, self.ccds = self.fetch_obs(self.ra, self.dec)
 
     def __repr__(self):
 

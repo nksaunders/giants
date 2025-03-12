@@ -47,3 +47,4 @@ testpaths = [
     "tests",
     "src",
 ]
+addopts = "--cov=giants --cov-report=term-missing"
