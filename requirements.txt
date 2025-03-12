@@ -1,9 +1,0 @@
-numpy
-astropy
-matplotlib
-lightkurve
-astroquery
-pandas
-astropy
-tess-point
-astrocut

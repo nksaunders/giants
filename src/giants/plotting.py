@@ -25,7 +25,7 @@ __all__ = ['plot_summary']
 
 def add_gaia_figure_elements(tpf, coords, fig, magnitude_limit=18):
     """
-    Add Gaia DR2 sources to a TPF plot.
+    Add Gaia DR2 sources to a TPF plot. Adapted from lightkurve.
 
     Parameters
     ----------
@@ -62,7 +62,7 @@ def add_gaia_figure_elements(tpf, coords, fig, magnitude_limit=18):
     if len(result) == 0:
         raise no_targets_found_message
     radecs = np.vstack([result['RA_ICRS'], result['DE_ICRS']]).T
-    coords = tpf.wcs.all_world2pix(radecs, 0) ## TODO, is origin supposed to be zero or one?
+    coords = tpf.wcs.all_world2pix(radecs, 0)
     year = ((tpf.time[0].jd - 2457206.375) * u.day).to(u.year)
     pmra = ((np.nan_to_num(np.asarray(result.pmRA)) * u.milliarcsecond/u.year) * year).to(u.arcsec).value
     pmdec = ((np.nan_to_num(np.asarray(result.pmDE)) * u.milliarcsecond/u.year) * year).to(u.arcsec).value
