@@ -1,4 +1,4 @@
-name: giants-tests
+name: Test giants pipeline
 
 on: [push, pull_request]  # Runs on push and PRs
 
