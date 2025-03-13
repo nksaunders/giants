@@ -48,3 +48,7 @@ testpaths = [
     "src",
 ]
 addopts = "--cov=giants --cov-report=term-missing"
+filterwarnings = [
+    "error",
+    "ignore::UserWarning"
+]

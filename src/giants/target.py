@@ -249,7 +249,7 @@ class Target(object):
                 my_cutter = astrocut.CutoutFactory()
 
                 if out_path is None:
-                    out_path = f'/home/nsaunders/mendel-nas1/cutout_files/tic{self.ticid}'
+                    out_path = '.' #f'/home/nsaunders/mendel-nas1/cutout_files/tic{self.ticid}'
                 cutout_path = os.path.join(out_path, f'tic{self.ticid}')
                 cutout_file = my_cutter.cube_cut(f's3://stpubdata/tess/public/mast/tess-s{sector:04}-{cam}-{ccd}-cube.fits', 
                                                  self.coords, 11, output_path=cutout_path)
