@@ -2,9 +2,11 @@ from giants.target import Target
 
 def test_target_init():
     target = Target(97766057)
-    target_str = Target('97766057')
     assert target.has_target_info
     assert target.ticid == 97766057
+    target_str = Target('97766057')
+    assert target_str.has_target_info
+    assert target_str.ticid == 97766057
     assert round(target.ra) == 252
     assert round(target.dec) == -32
     assert target.available_sectors[0] == 12

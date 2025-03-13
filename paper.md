@@ -40,15 +40,15 @@ When a planet orbiting a star outside of our solar system (known as an exoplanet
 
 As a host star evolves into a subgiant and then a red giant, it becomes cooler, larger, and more luminous. This stellar evolution has two primary effects on a planet's transit---the transit becomes shallower and lower signal to noise due to the increased brightness of the host star it is transiting, and the duration of the transit increases as the stellar radius grows larger. Additionally, evolved stars exhibit photometric variability due to surface granulation which can obscure a transit signal [@cite]. 
 
-Multiple large-scale transit-search efforts exist to identify new transiting planets in the TESS FFI observations, most prominently the MIT Quick-Look Pipeline (QLP; [@qlp]) and NASA's Science Processing Operations Center (SPOC, [@spoc]). These search efforts are intended to apply broadly to all transiting planet systems, ... 
+Multiple large-scale transit-search efforts exist to identify new transiting planets in the TESS FFI observations, most prominently the MIT Quick-Look Pipeline (QLP; [@huang2020]) and NASA's Science Processing Operations Center (SPOC, [@jenkins2020]). These search efforts are intended to apply broadly to all transiting planet systems, ... 
 
 # Data Access
 
-The `giants` pipeline uses TESS FFI data stored on the Mikulski Archive for Space Telescopes (MAST; [@mast]). There are two primary methods for downloading these data: accessing the data directly on the MAST-hosted cloud storage, or using the `TESSCut` [@brasseur2019] implementation in the `lightkurve` Python package.
+The `giants` pipeline uses TESS FFI data stored on the Mikulski Archive for Space Telescopes (MAST) operated by the Space Telescope Science Institute. There are two primary methods for downloading these data: accessing the data directly on the MAST-hosted cloud storage, or using the `TESSCut` [@brasseur2019] implementation in the `lightkurve` Python package.
 
 ## Cloud Data
 
-The MAST archive hosts image cubes containing TESS FFI observations on a publicly accessible s3 cloud server. This is the default and recommended method. 
+The MAST archive hosts image cubes containing TESS FFI observations on a publicly accessible cloud server using S3 Uniform Resource Identifers (URIs). The `giants` pipeline downloads pixel cutouts from these image cubes using the `from_cloud_data` method of the `giants.Target` object. This is the default and recommended method. 
 
 ## `TESSCut`
 
@@ -56,11 +56,23 @@ To download FFI observations with `TESSCut`, a user may call the `giants.Target`
 
 # Noise Removal
 
-We utilize the `RegressionCorrector` module of the Lightkurve 
+We utilize the `RegressionCorrector` module of the Lightkurve to remove common sources of instrumental noise that inhibit transiting planet detection. The most significant contribution to the noise is produced by the light scattered onto the TESS detector by the Earth and Moon as TESS orbits, which manifests as highly periodic, high-amplitude spikes in the measured flux. For a small region of the detector (i.e. our 11x11 pixel cutouts), this signal is present in every pixel and broadly spatially uniform. 
+
+To remove the scattered light background, we first define an aperture which captures the flux from the target star. By default, we use an aperture mask containing the central 3x3 pixels in the cutout; however, the aperture mask can also be set to `'threshold'` or `'pipeline'` following the functionality in `lightkurve`. We then create a design matrix of regressors, each containing the time-series flux of a single pixel outside of the target aperture, and perform principle component analysis (PCA) on the columns of the design matrix. We use PCA to reduce our design matrix to the five most significant signals shared among background pixels. The `RegressionCorrector` fits weights to the reduced design matrix to identify the contribution of the background regressors to the flux *within* the target aperture to construct a noise model, which is subtracted from the target flux, leaving the desired signal intact.
 
 # Transiting Planet Search
 
+We search for transiting planet signals using the `astropy` implementation of the `BoxLeastSquares` (BLS) algorithm. We first bin the data to 30-minute cadence for uniformity, and search over a grid of 5,000 periods evenly spaced between 2 and 30 days and 1,000 durations evenly spaced between 0.1 and 1.0 days. 
+
+# Summary Plots
+
+For each target, we produce a summary plot which contains information necessary to perform by-eye vetting. An example is shown in Figure \ref{fig:summary}. 
+
+![Summary plot for TIC 139474683 produced by the `giants` pipeline.\label{fig:summary}](summary.png)
+
 # Acknowledgements
+
+The `giants` pipeline relies heavily on previous open source astronomical software packages, primarily `lightkurve` and `astropy`. We would like to thank the developers of these packages for providing high-quality and well-documented software tools to the astronomical community. N.S. acknowledges support by the National Science Foundation Graduate Research Fellowship Program under Grant Numbers 1842402 & 2236415 and NASA’S Interdisciplinary Consortia for Astrobiology Research (NNH19ZDA001N-ICAR) under award number 19-ICAR19 2-0041. 
 
 # References
 
