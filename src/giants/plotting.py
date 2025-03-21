@@ -10,6 +10,9 @@ import pickle
 from astroquery.mast import Catalogs
 from astropy.config import set_temp_cache
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import astropy
+
+from . import CACHEDIR
 
 try:
     from astropy.stats import BoxLeastSquares
@@ -48,8 +51,9 @@ def add_gaia_figure_elements(tpf, coords, fig, magnitude_limit=18):
     # We are querying with a diameter as the radius, overfilling by 2x.
     from astroquery.vizier import Vizier
     Vizier.ROW_LIMIT = -1
-    result = Vizier.query_region(c1, catalog=["I/345/gaia2"],
-                                 radius=Angle(np.max(tpf.shape[1:]) * pix_scale, "arcsec"))
+    with astropy.config.set_temp_cache(CACHEDIR):
+        result = Vizier.query_region(c1, catalog=["I/345/gaia2"],
+                                    radius=Angle(np.max(tpf.shape[1:]) * pix_scale, "arcsec"))
     no_targets_found_message = ValueError('Either no sources were found in the query region '
                                           'or Vizier is unavailable')
     too_few_found_message = ValueError('No sources found brighter than {:0.1f}'.format(magnitude_limit))
