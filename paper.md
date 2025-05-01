@@ -18,7 +18,7 @@ authors:
     affiliation: 1
   - name: Emma Page
     orcid: 0000-0002-3221-3874
-    afiliation: 3
+    affiliation: 3
 affiliations:
  - name: Institute for Astronomy, University of Hawaiʻi at M\=anoa, 2680 Woodlawn Drive, Honolulu, HI 96822, USA
    index: 1
@@ -38,9 +38,9 @@ When a planet orbiting a star outside of our solar system (known as an exoplanet
 
 # Statement of Need
 
-As a host star evolves into a subgiant and then a red giant, it becomes cooler, larger, and more luminous. This stellar evolution has two primary effects on a planet's transit---the transit becomes shallower and lower signal to noise due to the increased brightness of the host star it is transiting, and the duration of the transit increases as the stellar radius grows larger. Additionally, evolved stars exhibit photometric variability due to surface granulation which can obscure a transit signal [@grunblatt2019]. 
+As a host star evolves into a subgiant and then a red giant, it becomes cooler, larger, and more luminous. This stellar evolution has two primary effects on a planet's transit—the transit becomes shallower and lower signal to noise due to the increased brightness of the host star it is transiting, and the duration of the transit increases as the stellar radius grows larger. Additionally, evolved stars exhibit photometric variability due to surface granulation which can obscure a transit signal [@grunblatt2019]. 
 
-Multiple large-scale transit-search efforts exist to identify new transiting planets in the TESS FFI observations, most prominently the MIT Quick-Look Pipeline (QLP; [@huang2020](@citealt)) and NASA's Science Processing Operations Center (SPOC, [@jenkins2020](@citealt)). These search efforts are intended to apply broadly to all transiting planet systems, ... 
+Multiple large-scale transit-search efforts exist to identify new transiting planets in the TESS FFI observations, most prominently the MIT Quick-Look Pipeline (QLP; [@huang2020]) and NASA's Science Processing Operations Center (SPOC; [@jenkins2020]). These search efforts are intended to apply broadly to all transiting planet systems, ...
 
 # Data Access
 
@@ -48,7 +48,7 @@ The `giants` pipeline uses TESS FFI data stored on the Mikulski Archive for Spac
 
 ## Cloud Data
 
-The MAST archive hosts image cubes containing TESS FFI observations on a publicly accessible cloud server using S3 Uniform Resource Identifers (URIs). The `giants` pipeline downloads pixel cutouts from these image cubes using the `from_cloud_data` method of the `giants.Target` object. Accessing cloud data utilizes the `astrocut`[^2] Python package produced by STScI. This is the default and recommended method. 
+The MAST archive hosts image cubes containing TESS FFI observations on a publicly accessible cloud server using S3 Uniform Resource Identifiers (URIs). The `giants` pipeline downloads pixel cutouts from these image cubes using the `from_cloud_data` method of the `giants.Target` object. Accessing cloud data utilizes the `astrocut`[^2] Python package produced by STScI. This is the default and recommended method. 
 
 ## `TESSCut`
 
@@ -56,9 +56,9 @@ To download FFI observations with `TESSCut`, a user may call the `giants.Target`
 
 # Noise Removal
 
-We utilize the `RegressionCorrector` module of the Lightkurve to remove common sources of instrumental noise that inhibit transiting planet detection. The most significant contribution to the noise is produced by the light scattered onto the TESS detector by the Earth and Moon as TESS orbits, which manifests as highly periodic, high-amplitude spikes in the measured flux. For a small region of the detector (i.e. our 11x11 pixel cutouts), this signal is present in every pixel and broadly spatially uniform. 
+We utilize the `RegressionCorrector` module of Lightkurve to remove common sources of instrumental noise that inhibit transiting planet detection. The most significant contribution to the noise is produced by the light scattered onto the TESS detector by the Earth and Moon as TESS orbits, which manifests as highly periodic, high-amplitude spikes in the measured flux. For a small region of the detector (i.e. our 11x11 pixel cutouts), this signal is present in every pixel and broadly spatially uniform. 
 
-To remove the scattered light background, we first define an aperture which captures the flux from the target star. By default, we use an aperture mask containing the central 3x3 pixels in the cutout (by setting the `aperture_mask` keyword to `'center'`); however, the aperture mask can also be set to `'threshold'` or `'pipeline'` following the functionality in `lightkurve`. We then create a design matrix of regressors, each containing the time-series flux of a single pixel outside of the target aperture, and perform principle component analysis (PCA) on the columns of the design matrix. We use PCA to reduce our design matrix to the five most significant signals shared among background pixels which has proven effective at isolating the noise properties shared accross the pixel cutout. The `RegressionCorrector` fits weights to the reduced design matrix to identify the contribution of the background regressors to the flux *within* the target aperture to construct a noise model, which is subtracted from the target flux, leaving the desired signal intact. This approach is similar to the Pixel-Level De-correlation technique used successfully for observations by the *Spitzer* space telescope [@deming] and *Kepler*'s follow-up *K2* mission [@luger].
+To remove the scattered light background, we first define an aperture which captures the flux from the target star. By default, we use an aperture mask containing the central 3x3 pixels in the cutout (by setting the `aperture_mask` keyword to `'center'`); however, the aperture mask can also be set to `'threshold'` or `'pipeline'` following the functionality in `lightkurve`. We then create a design matrix of regressors, each containing the time-series flux of a single pixel outside of the target aperture, and perform principal component analysis (PCA) on the columns of the design matrix. We use PCA to reduce our design matrix to the five most significant signals shared among background pixels, which has proven effective at isolating the noise properties shared across the pixel cutout. The `RegressionCorrector` fits weights to the reduced design matrix to identify the contribution of the background regressors to the flux *within* the target aperture to construct a noise model, which is subtracted from the target flux, leaving the desired signal intact. This approach is similar to the Pixel-Level De-correlation technique used successfully for observations by the *Spitzer* space telescope [@deming] and *Kepler*'s follow-up *K2* mission [@luger].
 
 After removing the most significant noise signal with our PCA-derived model, we remove long-term trends that remain in the light curve due to astrophysical signals such as stellar variability (from the target or a background source). We apply the `flatten` method of `lightkurve`, which utilizes a Savitzky-Golay filter. We set the window length of the filter to be much longer than the expected duration of any planet transits (~10 days) to avoid the possibility of erroneously flattening the planet signal. We then median-normalize the flux in the light curve.
 
@@ -84,11 +84,11 @@ The planet search functionality of `giants` can also be run on light curves prod
 
 # Applications
 
-The `giants` pipeline has been used in the detection and validation of numerous planets accross 7 papers [@saunders2022,@grunblatt2022,@grunblatt2023,@grunblatt2024,@periera2024,@saunders2024,@saunders2025].
+The `giants` pipeline has been used in the detection and validation of numerous planets across 7 papers [@saunders2022,@grunblatt2022,@grunblatt2023,@grunblatt2024,@periera2024,@saunders2024,@saunders2025].
 
 # Acknowledgements
 
-The `giants` pipeline relies heavily on previous open source astronomical software packages, primarily `lightkurve` and `astropy`. We would like to thank the developers of these packages for providing high-quality and well-documented software tools to the astronomical community. N.S. acknowledges support by the National Science Foundation Graduate Research Fellowship Program under Grant Numbers 1842402 & 2236415 and NASA’S Interdisciplinary Consortia for Astrobiology Research (NNH19ZDA001N-ICAR) under award number 19-ICAR19 2-0041. 
+The `giants` pipeline relies heavily on previous open source astronomical software packages, primarily `lightkurve` and `astropy`. We would like to thank the developers of these packages for providing high-quality and well-documented software tools to the astronomical community. N.S. acknowledges support by the National Science Foundation Graduate Research Fellowship Program under Grant Numbers 1842402 & 2236415 and NASA’s Interdisciplinary Consortia for Astrobiology Research (NNH19ZDA001N-ICAR) under award number 19-ICAR19 2-0041. 
 
 # References
 
