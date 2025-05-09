@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from pytools import P
 import scipy
 import matplotlib.pyplot as plt
 import matplotlib
@@ -7,9 +8,15 @@ from astropy.coordinates import SkyCoord, Angle
 import lightkurve as lk
 import astropy.units as u
 import pickle
+import cuvarbase.bls as bls
 from astroquery.mast import Catalogs
 from astropy.config import set_temp_cache
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import time
+from astropy.time import Time
+from scipy.signal import medfilt
+from scipy.stats import median_abs_deviation
+from scipy.interpolate import interp1d
 
 try:
     from astropy.stats import BoxLeastSquares
@@ -80,7 +87,7 @@ def add_gaia_figure_elements(tpf, coords, fig, magnitude_limit=18):
 
     return fig
 
-def plot_summary(target, outdir='', save_data=False, save_fig=True, 
+def plot_summary(target, outdir='', sector=0, save_data=False, save_fig=True, 
                  custom_lc=None, custom_id=None):
     """
     Produce a summary plot for a given target.
@@ -107,6 +114,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
 
     if custom_lc is not None:
+        print('A')
         lc = custom_lc
         lcc, sectors = parse_sectors(lc)
         ticid = custom_id
@@ -114,13 +122,18 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         aperture_mask = np.zeros(tpf.shape[1:], dtype=bool)
 
     else:
+        print('B')
         lc = target.lc
         lcc = target.lcc
         ticid = target.ticid
         tpf = target.tpf
         aperture_mask = target.aperture_mask
-        sectors = target.used_sectors
-
+        sectors = sorted(target.used_sectors)
+    
+    
+    print(lc.flux.value)
+    print(lc.time.value)
+    
     freq, fts = calculate_fft(lc)
 
     # save the data
@@ -133,23 +146,29 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
             np.savetxt(os.path.join(outdir,str(ticid)+'.dat.fft'), np.transpose([freq, fts]), fmt='%.8f', delimiter=' ')
 
     # fit BLS
-    bls_results, bls_stats, bls_model = get_bls_results(lc)
-    period = bls_results.period[np.argmax(bls_results.power)]
-    t0 = bls_results.transit_time[np.argmax(bls_results.power)]
-    depth = bls_results.depth[np.argmax(bls_results.power)]
+    print(f'Beginning BLS...')
+    start = time.time()
+    bls_results, bls_stats, bls_model = get_bls_results_gpu(lc)
+    print(f'BLS complete. Total time: {time.time() - start}s')
+    
+    power = bls_results["power"]
+    best_idx = np.argmax(power)
+    period = bls_results["best_period"]
+    t0 = bls_stats["transit_times"][0]
+    depth = bls_stats["depth"][0]
     depth_snr = depth / np.std(lc.flux.value)
-    dur = bls_stats['duration'].value * 24.
-
+    dur = bls_stats['duration'] * 24.
     harmonic_del = bls_stats['harmonic_delta_log_likelihood'].value
-    sde = (bls_results.power - np.mean(bls_results.power)) / np.std(bls_results.power)
+    sde = (bls_results["power"] - np.mean(bls_results["power"])) / np.std(bls_results["power"])
     max_power = max(sde)
 
     try:
-        bls_model_flux = bls_model.model(lc.time, period, dur / 24., t0)
+        bls_model_flux = bls_model.model(lc.time, period, dur / 24., t0) # <--- PROBLEMATIC
         model_lc = lk.LightCurve(time=lc.time, flux=bls_model_flux)
         scaled_residuals = np.median(lc.flux.value - bls_model_flux.value) / np.std(lc.flux.value)
 
-    except:
+    except Exception as e:
+        print(f'ERROR: {e}')
         model_lc = None
         scaled_residuals = np.nan
 
@@ -160,7 +179,9 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # save the transit stats
     with open(os.path.join(outdir, "transit_stats.txt"), "a+") as file:
-        file.write(f"{ticid} {depth:.5f} {depth_snr:.5f} {period.value:.5f} {t0.value:.5f} {dur:.5f} {scaled_residuals:.5f} {harmonic_del:.5f} {max_power:.5f} {in_rms:.5f} {out_rms:.5f}\n")
+        #TODO: Add {harmonic_del} back
+        print(f't0: {t0}')
+        file.write(f"{ticid} {depth:.5f} {depth_snr:.5f} {period:.5f} {t0} {dur:.5f} {scaled_residuals:.5f} {max_power:.5f} {in_rms:.5f} {out_rms:.5f}\n")
 
     """Create the figure."""
     dims = (27, 36)
@@ -169,7 +190,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
     ax_top.axis('off')
     ax_bot = plt.subplot2grid(dims, (dims[0]-1, 0), colspan=dims[1], rowspan=1)
     ax_bot.axis('off')
-    ax_top.set_title(f'TIC {ticid}', fontweight='bold', size=24, y=0.93)
+    ax_top.set_title(f'TIC {ticid} (GPU)', fontweight='bold', size=24, y=0.93)
     
     # set title to include stellar params
     if target.has_target_info:
@@ -212,13 +233,13 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # plot the folded light curve
     ax = plt.subplot2grid(dims, (7,0), colspan=18, rowspan=4)
-    plot_folded(lc, period.value, t0.value, depth, dur, ax)
+    plot_folded(lc, period, t0.value, depth, dur, ax)
 
     # plot the odd and even transits
     ax = plt.subplot2grid(dims, (12,0), colspan=9, rowspan=4)
-    plot_even(lc, period.value, t0.value, depth, dur, ax)
+    plot_even(lc, period, t0, depth, dur, ax)
     ax = plt.subplot2grid(dims, (12,9), colspan=9, rowspan=4)
-    plot_odd(lc, period.value, t0.value, depth, dur, ax)
+    plot_odd(lc, period, t0, depth, dur, ax)
     plt.subplots_adjust(wspace=0)
     ax.set_yticklabels([])
     ax.set_ylabel('')
@@ -233,11 +254,11 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # plot the transit model
     ax = plt.subplot2grid(dims, (18,0), colspan=12, rowspan=6)
-    plot_tr_top(lc, model_lc, period.value, t0.value, depth, ax)
+    plot_tr_top(lc, model_lc, period, t0, depth, ax)
 
     # plot the residuals
     ax = plt.subplot2grid(dims, (24,0), colspan=12, rowspan=3)
-    plot_tr_bottom(lc, model_lc, period.value, t0.value, depth, ax)
+    plot_tr_bottom(lc, model_lc, period, t0, depth, ax)
     plt.subplots_adjust(hspace=0)
 
     # plot the BLS periodogram
@@ -252,7 +273,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
 
     # plot the difference image
     ax = plt.subplot2grid(dims, (18, 25), colspan=11, rowspan=9)
-    plot_diff_image(tpf, lcc, period.value, t0.value, dur, ax)
+    plot_diff_image(tpf, lcc, period, t0, dur, ax)
 
     fig = plt.gcf()
     fig.patch.set_facecolor('white')
@@ -263,7 +284,7 @@ def plot_summary(target, outdir='', save_data=False, save_fig=True,
         try:
             fig.savefig(os.path.join(outdir,'plots/'+str(ticid)+'_summary.png'), bbox_inches='tight')
         except:
-            fig.savefig(os.path.join(outdir, str(ticid)+'_summary.png'), bbox_inches='tight')
+            fig.savefig(os.path.join(outdir, str(ticid)+'_summary'+str(sector)+'.png'), bbox_inches='tight')
 
 def fit_transit_model(lc, period, t0):
     """
@@ -307,6 +328,7 @@ def plot_raw_lc(lcc, sectors, model_lc, per, t0, depth, ax=None):
     if ax is None:
         _, ax = plt.subplots(1)
 
+    print(f'Sectors:{sectors}')
     for n in range(len(lcc)):
         i = len(lcc) - n - 1
         lc = lcc[i]
@@ -315,7 +337,7 @@ def plot_raw_lc(lcc, sectors, model_lc, per, t0, depth, ax=None):
                            bbox_transform=ax.transAxes)
         lc.scatter(ax=ax_in, c='gray', s=75, alpha=0.4, edgecolor='None')
 
-        n_transits = round((lcc[-1].time.value[-1] - lcc[0].time.value[0]) / per.value)
+        n_transits = round((lcc[-1].time.value[-1] - lcc[0].time.value[0]) / per)
         transit_times = t0 + np.arange(n_transits) * per
         tt_masked = transit_times[(transit_times > lc.time[0]) & (transit_times < lc.time[-1])]
         tt_y = np.ones_like(tt_masked) * .9 * (np.min(model_lc.flux.value)-depth*4)
@@ -480,6 +502,8 @@ def get_bls_results(lc):
 
     # mask 24 hours after and 12 hours before the largest gap
     link_mask[(lc.time.value < lc.time.value[gap] + 1.0) & (lc.time.value > lc.time.value[gap] - 0.5)] = False
+    
+    link_mask[(lc.flux_err.value > 0.005) & (lc.flux_err.value < -0.005)] = False
 
     # drop False indicies from lc
     lc = lc[link_mask]
@@ -496,6 +520,128 @@ def get_bls_results(lc):
 
     return results, stats, model
 
+def compute_robust_snr(sr_f, freqs):
+    n = len(sr_f)
+    n_bins = int(np.round(1 + np.log2(n)))  # Sturges' law
+
+    # Bin the SR spectrum
+    bins = np.linspace(freqs.min(), freqs.max(), n_bins + 1)
+    bin_centers = 0.5 * (bins[:-1] + bins[1:])
+    binned_median = np.array([
+        np.median(sr_f[(freqs >= bins[i]) & (freqs < bins[i+1])])
+        for i in range(n_bins)
+    ])
+
+    # Interpolate the trend from binned medians
+    trend_interp = interp1d(bin_centers, binned_median, kind='linear', fill_value="extrapolate")
+    sr_bar = trend_interp(freqs)
+
+    # Detrend SR and compute MAD
+    numerator = sr_f - sr_bar
+    mad = median_abs_deviation(numerator)
+    robust_std = 1.4826 * mad
+
+    snr = numerator / robust_std
+    return snr
+def get_bls_results_gpu(lc):
+    """
+    Get the BLS results for a given light curve.
+    
+    Parameters
+    ----------
+    lc : lightkurve.LightCurve
+        Light curve to fit.
+        
+    Returns
+    -------
+    results : astropy.stats.BoxLeastSquares
+        Astropy BLS object.        
+    """
+
+    try:
+        lc = lc.bin(.5/24).remove_nans()
+    except:
+        lc = lc.remove_nans()
+        
+    # create boolean mask for tpf
+    link_mask = np.ones_like(lc.time.value, dtype=bool)
+
+    # add the first 24 and last 12 hours of data to mask
+    link_mask[lc.time.value < lc.time.value[0] + 1.0] = False
+    link_mask[lc.time.value > lc.time.value[-1] - 0.5] = False
+
+    # identify the largest gap in the data
+    gap = np.argmax(np.diff(lc.time.value))
+
+    # mask 24 hours after and 12 hours before the largest gap
+    link_mask[(lc.time.value < lc.time.value[gap] + 1.0) & (lc.time.value > lc.time.value[gap] - 0.5)] = False
+    link_mask[(lc.flux_err.value > 0.001) | (lc.flux_err.value < -0.001)] = False
+    # drop False indicies from lc
+    lc = lc[link_mask]
+    
+    print(f'Max flux:{lc.flux_err.value[np.argmax(lc.flux_err.value)]}')
+    
+    # derive baseline from the data for consistency
+    periods = np.linspace(2.0, 20.0, 20000)  # days
+    durations = np.linspace(0.1, 1.0, 1000)  # days
+    freqs = 1 / periods
+    
+    print('Running Cuvarbase (GPU)...')
+    start = time.time()
+    print(f'Flux error:{lc.flux_err}')
+    freqs, bls_power, sols = bls.eebls_transit_gpu(lc.time.value, lc.flux.value, lc.flux_err.value, freqs=freqs, qmin_fac=0.3, qmax_fac=1)
+    print(f'Cuvarbase finished. Time: {time.time() - start}')
+    model = BoxLeastSquares(lc.time, lc.flux)
+   # print(f'Running BoxLeastSquares (CPU)...')
+   # start = time.time()
+   # results = model.power(np.linspace(2., 30., 5000), np.linspace(.1, 1., 1000))
+   # print(f'BoxLeastSquares finished. Time: {time.time() - start}')
+    
+
+   
+    snr = compute_robust_snr(bls_power, freqs)
+    best_period = periods[np.argmax(snr)]
+    print(f'Best period from paper:{best_period}')
+    
+   # print(f'Period from BoxLeastSquares: {results.period[np.argmax(results.power)]}. TT from BoxLeastSquares: {results.transit_time[np.argmax(results.power)]}')
+    
+    
+    best_idx = np.argmax(snr)
+    f_best = freqs[best_idx]
+    q_best, phi0_best = sols[best_idx]
+    
+    #print(f'q: {q_best}, phi: {phi0_best}')
+    #print(f'LC Time: {lc.time}')
+
+    period = periods[best_idx]
+    print(f'Period: {periods[np.argmax(bls_power)]}')
+    #print(f'best period: {periods[best_idx]}')
+    duration = q_best * period
+    
+
+    t0 = (phi0_best * period)
+    t0_mid_float = t0 + (duration / 2)
+    
+    # Find the first transit time within the observed time range
+    print(lc.time)
+    n = np.ceil((lc.time[0].value - t0_mid_float) / period)
+    print(n)
+    t0_mid= t0_mid_float + n * period
+    t0_mid = Time(t0_mid_float, format='btjd', scale='tdb')
+    
+   # print(f't0_mid: {t0_mid}')
+    stats = model.compute_stats(period, duration, t0_mid)
+    stats['period'] = period
+    stats['duration'] = duration
+    
+    #print(stats['transit_times'])
+
+    results = {"power": bls_power, "periods": periods, "best_period": period, "durations": durations, "best_duration": duration}
+
+
+    # Store results
+    return results, stats, model
+
 def plot_bls(lc, ax, results=None):
     """
     Plot the BLS periodogram for a given light curve.
@@ -510,19 +656,19 @@ def plot_bls(lc, ax, results=None):
         Astropy BLS object.
     """
     if results is None:
-        results, stats = get_bls_results(lc)
-    period = results.period[np.argmax(results.power)]
+        results, model = get_bls_results_gpu(lc)
+    periods = results["periods"]
 
-    ax.plot(results.period, results.power, "k", lw=0.75)
-    ax.set_xlim(results.period.min().value, results.period.max().value)
+    ax.plot(periods, results["power"], "k", lw=0.75)
+    ax.set_xlim(results["periods"].min(), results["periods"].max())
     ax.set_xlabel("period [days]")
     ax.set_ylabel("log likelihood")
 
     # Highlight the harmonics of the peak period
-    ax.axvline(period.value, alpha=0.4, lw=4, c='cornflowerblue')
+    ax.axvline(results["best_period"], alpha=0.4, lw=4, c='cornflowerblue')
     for n in range(2, 10):
-        ax.axvline(n*period.value, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
-        ax.axvline(period.value / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.axvline(n*results["best_period"], alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
+        ax.axvline(results["best_period"] / n, alpha=0.4, lw=1, linestyle="dashed", c='cornflowerblue')
 
 def plot_folded(lc, period, t0, depth, dur, ax):
     """
@@ -659,6 +805,8 @@ def plot_diff_image(tpf, lcc, per, t0, dur, ax):
             try:
                 t_frames = np.where([np.min(np.abs(tt - t)) < (dur/2)/24. for t in tpf.time.value])
                 nt_frames = np.where([np.min(np.abs(tt + (dur/24.) - t)) < (dur/2)/24. for t in tpf.time.value])
+                print(t_frames)
+               # print(nt_frames)
                 rf = np.nanmean(tpf.flux.value[t_frames], axis=0) - np.nanmean(tpf.flux.value[nt_frames], axis=0)
                 if np.nansum(rf) == 0:
                     continue
@@ -666,7 +814,6 @@ def plot_diff_image(tpf, lcc, per, t0, dur, ax):
                     resid_frames.append(rf)
             except:
                 continue
-
         residual = np.nanmedian(resid_frames, axis=0)
         mappable = plt.imshow(residual)
         plt.xlim(-.5, 10.5)
@@ -729,7 +876,7 @@ def plot_table(period, t0, depth, depth_snr, dur, scaled_residuals, rstar, ax):
     # result = ktransit_model.fitresult[1:]
 
     col_labels = ['Period (days)', r'$t_0$ (BTJD)', r'$R_p$ / $R_\bigstar$', r'$R_P$ ($R_J$)', 'Duration (hours)', 'Depth SNR', 'Scaled Likelihood']
-    values = [f'{period.value:.5f}', f'{t0.value:.5f}', f'{rprs:.5f}', rp_string, f'{dur:.3f}', f'{depth_snr:.3f}', f'{scaled_residuals:.3f}']
+    values = [f'{period:.5f}', f'{t0.value:.5f}', f'{rprs:.5f}', rp_string, f'{dur:.3f}', f'{depth_snr:.3f}', f'{scaled_residuals:.3f}']
     # values = [f'{np.abs(val):.5f}' for val in result]
 
     # values.append(f'{float(values[-1]) * rstar * 9.731:.3f}')

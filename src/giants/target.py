@@ -12,7 +12,6 @@ from tess_stars2px import tess_stars2px_function_entry
 from astroquery.mast import Catalogs
 from astropy.coordinates import SkyCoord
 from astropy.config import set_temp_cache
-
 from . import PACKAGEDIR
 from .plotting import plot_summary
 
@@ -482,7 +481,7 @@ class Target(object):
         if zero_point_background:
             model -= np.percentile(model.flux, 5)
 
-        corrected_lc = lk.LightCurve(time=model.time, flux=raw_lc.normalize().flux.value-model.flux.value, flux_err=raw_lc.flux_err.value)
+        corrected_lc = lk.LightCurve(time=model.time, flux=raw_lc.normalize().flux.value-model.flux.value, flux_err=raw_lc.normalize().flux_err.value)
 
         if flatten:
             if tpf.sector <= 27:
