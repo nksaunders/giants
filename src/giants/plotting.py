@@ -589,8 +589,7 @@ def get_bls_results_gpu(lc):
     print('Running Cuvarbase (GPU)...')
     start = time.time()
     print(f'Flux error:{lc.flux_err}')
-    freqs, bls_power, sols = bls.eebls_transit_gpu(lc.time.value, lc.flux.value, lc.flux_err.value, freqs=freqs, qmin_fac=0.3, qmax_fac=1)
-    print(f'Cuvarbase finished. Time: {time.time() - start}')
+    freqs, bls_power, sols = bls.eebls_transit_gpu(lc.time.value, lc.flux.value, lc.flux_err.value, freqs=freqs)
     model = BoxLeastSquares(lc.time, lc.flux)
    # print(f'Running BoxLeastSquares (CPU)...')
    # start = time.time()
@@ -798,21 +797,22 @@ def plot_diff_image(tpf, lcc, per, t0, dur, ax):
 
     n_transits = round((lcc[-1].time.value[-1] - lcc[0].time.value[0]) / per)
     transit_times = t0 + np.arange(n_transits) * per
-
-    resid_frames = []
+    transit_times = transit_times.value
     try:
-        for tt in transit_times[transit_times < tpf.time.value[-1]]:
+        resid_frames = []
+        valid_transits = transit_times[transit_times < tpf.time.value[-1]]
+        for tt in valid_transits:
             try:
                 t_frames = np.where([np.min(np.abs(tt - t)) < (dur/2)/24. for t in tpf.time.value])
                 nt_frames = np.where([np.min(np.abs(tt + (dur/24.) - t)) < (dur/2)/24. for t in tpf.time.value])
                 print(t_frames)
-               # print(nt_frames)
                 rf = np.nanmean(tpf.flux.value[t_frames], axis=0) - np.nanmean(tpf.flux.value[nt_frames], axis=0)
                 if np.nansum(rf) == 0:
                     continue
                 else:
                     resid_frames.append(rf)
             except:
+                print('D')
                 continue
         residual = np.nanmedian(resid_frames, axis=0)
         mappable = plt.imshow(residual)
@@ -822,8 +822,8 @@ def plot_diff_image(tpf, lcc, per, t0, dur, ax):
         ax.set_title('(In - Out) Transit')
     except:
         tpf.plot(frame=100, ax=ax)
-        ax.annotate('Difference Image Failed', xy=(0.5, 0.1), xycoords='axes fraction', 
-                    fontsize=28, ha='center', va='center', backgroundcolor='w', 
+        ax.annotate('Difference Image Failed', xy=(0.5, 0.1), xycoords='axes fraction',
+                    fontsize=28, ha='center', va='center', backgroundcolor='w',
                     bbox=dict(facecolor='w', alpha=0.75, edgecolor='black'))
 
     plt.set_cmap('gray')

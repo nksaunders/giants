@@ -1,0 +1,26 @@
+#!/bin/bash
+
+#SBATCH --job-name=giants_gpu
+#SBATCH --qos=gpu
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH -N 1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=16G
+#SBATCH --output=giants_gpu.out
+
+module load compilers/nvidia/22.3_gcc540_cuda116
+module load gcc/11.2.0
+
+export CUDA_HOME=/share/apps/nvidia_hpc_sdk/Linux_x86_64/22.3/cuda/11.6
+export PATH=$CUDA_HOME/bin:$PATH
+export CPATH=$CUDA_HOME/include:$CPATH
+export LIBRARY_PATH=$CUDA_HOME/lib64:$LIBRARY_PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+
+source ~/giants_env/bin/activate
+
+echo "PYTHON 2: $(which python)"
+python -c "import numpy; print('numpy: ', numpy.__version__)"
+# Run your script
+python test.py

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#SBATCH --job-name=giants_cpu
+#SBATCH --qos=main
+#SBATCH -N 1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=16G
+#SBATCH --output=giants_cpu.out
+
+source ~/giants_env/bin/activate
+
+echo "PYTHON 2: $(which python)"
+python -c "import numpy; print('numpy: ', numpy.__version__)"
+# Run your script
+python test.py

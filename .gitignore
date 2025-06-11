@@ -87,3 +87,5 @@ sandbox
 mastDownload
 .pytest_cache
 .vscode
+
+.vs/
