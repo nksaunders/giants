@@ -29,13 +29,15 @@ class Target(object):
     ----------
     ticid : int
         TIC ID of the target
+    target_info : dict
+        dictionary containing basic information about the target
+        default is None (will query TIC catalog)
     silent : bool
         suppress print statements
     """
 
     def __init__(self, ticid, target_info=None, silent=False):
 
-        # parse TIC ID
         self.ticid = ticid
         if isinstance(self.ticid, str):
             self.ticid = int(re.search(r'\d+', str(self.ticid)).group())
@@ -44,21 +46,29 @@ class Target(object):
         self.has_target_info = False
         self.silent = silent
 
-        if target_info is None:
-            self.get_target_info(self.ticid)
-        else:
-            self.ra = target_info['ra']
-            self.dec = target_info['dec']
-            self.coords = SkyCoord(ra=self.ra, dec=self.dec, frame='icrs', unit=(u.deg, u.deg))
-            self.rstar = target_info['rstar']
-            self.mstar = target_info['mstar']
-            self.teff = target_info['teff']
-            self.logg = target_info['logg']
-            self.vmag = target_info['vmag']
+        # Initialize properties with None
+        self.ra = self.dec = self.coords = None
+        self.rstar = self.mstar = self.teff = self.logg = self.vmag = None
+
+        if target_info:
+            # Assign values if they exist, otherwise default to None
+            self.ra = target_info.get('ra')
+            self.dec = target_info.get('dec')
+            if self.ra is not None and self.dec is not None:
+                self.coords = SkyCoord(ra=self.ra, dec=self.dec, frame='icrs', unit=(u.deg, u.deg))
+
+            self.rstar = target_info.get('rstar')
+            self.mstar = target_info.get('mstar')
+            self.teff = target_info.get('teff')
+            self.logg = target_info.get('logg')
+            self.vmag = target_info.get('vmag')
+
             self.has_target_info = True
 
+        else:
+            self.get_target_info(self.ticid)
+
         self.available_sectors, self.cameras, self.ccds = self.fetch_obs(self.ra, self.dec)
-        # self.available_sectors = self.check_available_sectors()
 
     def __repr__(self):
 
@@ -238,7 +248,7 @@ class Target(object):
                 my_cutter = astrocut.CutoutFactory()
 
                 if out_path is None:
-                    out_path = f'/home/nsaunders/mendel-nas1/cutout_files/tic{self.ticid}'
+                    out_path = '.' #f'/home/nsaunders/mendel-nas1/cutout_files/tic{self.ticid}'
                 cutout_path = os.path.join(out_path, f'tic{self.ticid}')
                 cutout_file = my_cutter.cube_cut(f's3://stpubdata/tess/public/mast/tess-s{sector:04}-{cam}-{ccd}-cube.fits', 
                                                  self.coords, 11, output_path=cutout_path)
