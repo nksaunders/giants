@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 target.fetch_and_clean_data(lc_source='cloud')
             else:
                 target.fetch_and_clean_data(lc_source='lightkurve')
-            plot_summary(target, outdir=args.outdir, save_data=args.save_dataa)
+            plot_summary(target, outdir=args.outdir, save_data=args.save_data)
 
     except:
         print(f'Target {args.ticid} failed.')
