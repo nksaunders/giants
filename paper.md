@@ -9,7 +9,7 @@ authors:
   - name: Nicholas Saunders
     orcid: 0000-0003-2657-3889
     corresponding: true
-    affiliation: "1, 4" 
+    affiliation: 1 
   - name: Samuel K. Grunblatt
     orcid: 0000-0003-4976-9980
     affiliation: 2
@@ -18,16 +18,14 @@ authors:
     affiliation: 1
   - name: Emma Page
     orcid: 0000-0002-3221-3874
-    affiliation: 3
+    affiliation: 2
 affiliations:
- - name: Institute for Astronomy, University of Hawaiʻi at M\=anoa, 2680 Woodlawn Drive, Honolulu, HI 96822, USA
+ - name: Department of Astronomy, Yale University, New Haven, CT 06511, USA
    index: 1
  - name: Department of Physics and Astronomy, The University of Alabama, 514 University Blvd., Tuscaloosa, AL 35487, USA
    index: 2
- - name: Department of Physics, Lehigh University, 16 Memorial Drive East, Bethlehem, PA 18015, USA
+ - name: Institute for Astronomy, University of Hawaiʻi at M\=anoa, 2680 Woodlawn Drive, Honolulu, HI 96822, USA
    index: 3
- - name: NSF Graduate Research Fellow
-   index: 4
 date: 05 February 2025
 bibliography: paper.bib
 ---
