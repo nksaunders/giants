@@ -15,7 +15,7 @@ authors:
     affiliation: 2
   - name: Daniel Huber
     orcid: 0000-0001-8832-4488
-    affiliation: 1
+    affiliation: 3
   - name: Emma Page
     orcid: 0000-0002-3221-3874
     affiliation: 2
